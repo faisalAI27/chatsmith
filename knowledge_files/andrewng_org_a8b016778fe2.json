@@ -1,0 +1,206 @@
+{
+  "metadata": {
+    "url": "https://www.andrewng.org/",
+    "name": "Andrew Ng",
+    "created_at": "2025-12-05T17:44:21.762256",
+    "pages_scraped": 10,
+    "has_web_search_supplement": true
+  },
+  "primary_content": {
+    "source": "website_scraping",
+    "reliability": "high",
+    "pages": [
+      {
+        "title": "",
+        "description": "",
+        "sections": [
+          {
+            "heading": "Origins of the Modern MOOC (xMOOC)",
+            "content": "Online education has been around for decades,with many universities offering online courses to a small, limited audience.What changed in 2011 was scale and availability, when Stanford University offered three courses free to the public, each garnering signups of about 100,000 learners or more.The launch of these three courses, taught by Andrew Ng, Peter Norvig, Sebastian […]"
+          },
+          {
+            "heading": "Mechatronic design of an integrated robotic hand",
+            "content": "Historically, robotic hand research has tended to focus on two areas: severely underactuated hands, and high-degree-offreedom fully actuated hands. Comparatively little research has been done in between those spaces. Furthermore, despite the large number of robotic hand designs that have been proposed in the past few decades, very few robot hands are available for purchase […]"
+          },
+          {
+            "heading": "Deep Learning with COTS HPC Systems",
+            "content": "Scaling up deep learning algorithms has been shown to lead to increased performance in benchmark tasks and to enable discovery of complex high-level features. Recent efforts to train extremely large networks (with over 1 billion parameters) have relied on cloud- like computing infrastructure and thousands of CPU cores. In this paper, we present technical details […]"
+          },
+          {
+            "heading": "Deep Learning and Unsupervised Feature Learning",
+            "content": "Machine learning and AI through large scale brain simulations (artificial neural networks)."
+          }
+        ],
+        "content": "Dr. Andrew Ng is a globally recognized leader in AI (Artificial Intelligence). He is Founder of DeepLearning.AI , Executive Chairman of LandingAI , General Partner at AI Fund , Chairman and Co-Founder of Coursera and an Adjunct Professor at Stanford University’s Computer Science Department. As a pioneer in machine learning and online education, Dr. Ng has changed countless lives through his work in AI, and has authored or co-authored over 200 research papers in machine learning, robotics and related fields. In 2023, he was named to the Time100 AI list of the most influential AI persons in the world. Learn more Get Andrew’s letters delivered to your inbox every week. Publications View all Origins of the Modern MOOC (xMOOC) Online education has been around for decades,with many universities offering online courses to a small, limited audience.What changed in 2011 was scale and availability, when Stanford University offered three courses free to the public, each garnering signups of about 100,000 learners or more.The launch of these three courses, taught by Andrew Ng, Peter Norvig, Sebastian […] Mechatronic design of an integrated robotic hand Historically, robotic hand research has tended to focus on two areas: severely underactuated hands, and high-degree-offreedom fully actuated hands. Comparatively little research has been done in between those spaces. Furthermore, despite the large number of robotic hand designs that have been proposed in the past few decades, very few robot hands are available for purchase […] Deep Learning with COTS HPC Systems Scaling up deep learning algorithms has been shown to lead to increased performance in benchmark tasks and to enable discovery of complex high-level features. Recent efforts to train extremely large networks (with over 1 billion parameters) have relied on cloud- like computing infrastructure and thousands of CPU cores. In this paper, we present technical details […] Projects View all Deep Learning and Unsupervised Feature Learning Machine learning and AI through large scale brain simulations (artificial neural networks). Read more Courses View all DeepLearning.AI’s Short Courses Generative AI for Everyone Machine Learning Specialization Deep Learning Specialization AI For Everyone",
+        "url": "https://www.andrewng.org",
+        "page_type": "homepage"
+      },
+      {
+        "title": "About",
+        "description": "",
+        "sections": [
+          {
+            "heading": "About",
+            "content": "Dr. Andrew Ng is a globally recognized leader in AI (Artificial Intelligence). He is Founder of DeepLearning.AI, Executive Chairman of LandingAI, General Partner at AI Fund, Chairman & Co-Founder of Coursera and an Adjunct Professor at Stanford University’s Computer Science Department. In 2011, he led the development of Stanford University's main MOOC (Massive Open Online Courses) platform and taught an online Machine Learning course that was offered to over 100,000 students leading to the founding of Coursera where he is currently Chairman and Co-founder. Previously, he was Chief Scientist at Baidu, where he led the company’s ~1300 person AI Group and was responsible for driving the company’s global AI strategy and infrastructure. He was also the founding lead of the Google Brain team. As a pioneer in machine learning and online education, Dr. Ng has changed countless lives through his work in AI, and has authored or co-authored over 200 research papers in machine learning, robotics a"
+          }
+        ],
+        "content": "About Dr. Andrew Ng is a globally recognized leader in AI (Artificial Intelligence). He is Founder of DeepLearning.AI, Executive Chairman of LandingAI, General Partner at AI Fund, Chairman & Co-Founder of Coursera and an Adjunct Professor at Stanford University’s Computer Science Department. In 2011, he led the development of Stanford University's main MOOC (Massive Open Online Courses) platform and taught an online Machine Learning course that was offered to over 100,000 students leading to the founding of Coursera where he is currently Chairman and Co-founder. Previously, he was Chief Scientist at Baidu, where he led the company’s ~1300 person AI Group and was responsible for driving the company’s global AI strategy and infrastructure. He was also the founding lead of the Google Brain team. As a pioneer in machine learning and online education, Dr. Ng has changed countless lives through his work in AI, and has authored or co-authored over 200 research papers in machine learning, robotics and related fields. In 2023, he was named to the Time100 AI list of the most influential AI persons in the world. He holds degrees from Carnegie Mellon University, MIT and the University of California, Berkeley. Follow Dr.Ng on Twitter (@AndrewYNg) and Linkedin . Landing AI provides cutting-edge software that enables reliable automated inspection for a wide range of applications in industrial automation and manufacturing. Learn more DeepLearning.AI is an education technology company that is empowering the global workforce to build an AI-powered future through world-class education, hands-on training, and a collaborative community. Learn more AI Fund is a venture capital firm that strives to move humanity forward by accelerating the adoption of AI. Learn more",
+        "url": "https://www.andrewng.org/about",
+        "page_type": "subpage"
+      },
+      {
+        "title": "Publications",
+        "description": "",
+        "sections": [
+          {
+            "heading": "Origins of the Modern MOOC (xMOOC)",
+            "content": "Online education has been around for decades,with many universities offering online courses to a small, limited audience.What changed in 2011 was scale and availability, when Stanford University offered three courses free to the public, each garnering signups of about 100,000 learners or more.The launch of these three courses, taught by Andrew Ng, Peter Norvig, Sebastian […]"
+          },
+          {
+            "heading": "Mechatronic design of an integrated robotic hand",
+            "content": "Historically, robotic hand research has tended to focus on two areas: severely underactuated hands, and high-degree-offreedom fully actuated hands. Comparatively little research has been done in between those spaces. Furthermore, despite the large number of robotic hand designs that have been proposed in the past few decades, very few robot hands are available for purchase […]"
+          },
+          {
+            "heading": "Deep Learning with COTS HPC Systems",
+            "content": "Scaling up deep learning algorithms has been shown to lead to increased performance in benchmark tasks and to enable discovery of complex high-level features. Recent efforts to train extremely large networks (with over 1 billion parameters) have relied on cloud- like computing infrastructure and thousands of CPU cores. In this paper, we present technical details […]"
+          },
+          {
+            "heading": "Parsing with Compositional Vector Grammars",
+            "content": "Natural language parsing has typically been done with small sets of discrete categories such as NP and VP, but this representation does not capture the full syntactic nor semantic richness of linguistic phrases, and attempts to improve on this by lexicalizing phrases or splitting categories only partly address the problem at the cost of huge […]"
+          },
+          {
+            "heading": "Learning New Facts From Knowledge Bases With Neural Tensor Networks and Semantic Word Vectors",
+            "content": "Knowledge bases provide applications with the beneﬁt of easily accessible, systematic relational knowledge but often suffer in practice from their incompleteness and lack of knowledge of new entities and relations. Much work has focused on building or extending them by ﬁnding patterns in large unannotated text corpora. In contrast, here we mainly aim to complete […]"
+          },
+          {
+            "heading": "An Experimental and Theoretical Comparison of Model Selection Methods",
+            "content": "In the model selection problem, we must balance the complexity of a statistical model with its goodness of fit to the training data. This problem arises repeatedly in statistical estimation, machine learning, and scientific inquiry in general. Instances of the model selection problem include choosing the best number of hidden nodes in a neural network, […]"
+          },
+          {
+            "heading": "An Information-Theoretic Analysis of Hard and Soft Assignment Methods for Clustering",
+            "content": "Assignment methods are at the heart of many algorithms for unsupervised learning and clustering — in particular, the well-known -means and Expectation-Maximization (EM) algorithms. In this work, we study several different methods of assignment, including the Õhard” assignments used by -means and the Õsoft” assignments used by EM. While it is known that -means minimizes […]"
+          },
+          {
+            "heading": "Preventing “Overfitting” of Cross-Validation data",
+            "content": "Suppose that, for a learning task, we have to select one hypothesis out of a set of hypotheses (that may, for example, have been generated by multiple applications of a randomized learning algorithm). A common approach is to evaluate each hypothesis in the set on some previously unseen cross-validation data, and then to select the […]"
+          },
+          {
+            "heading": "Improving Text Classification by Shrinkage in a Hierarchy of Classes",
+            "content": "When documents are organized in a large number of topic categories, the categories are often arranged in a hierarchy. The U.S. patent database and Yahoo are two examples. This paper shows that the accuracy of a naive Bayes text classifier can be significantly improved by taking advantage of a hierarchy of classes. We adopt an […]"
+          },
+          {
+            "heading": "Applying Online-search to Reinforcement Learning",
+            "content": "In reinforcement learning it is frequently necessary to resort to an approximation to the true optimal value function. Here we investigate the benefits of online search in such cases. We examine “local” searches, where the agent performs a finite-depth lookahead search, and “global” searches, where the agent performs a search for a trajectory all the […]"
+          }
+        ],
+        "content": "Publications Origins of the Modern MOOC (xMOOC) Online education has been around for decades,with many universities offering online courses to a small, limited audience.What changed in 2011 was scale and availability, when Stanford University offered three courses free to the public, each garnering signups of about 100,000 learners or more.The launch of these three courses, taught by Andrew Ng, Peter Norvig, Sebastian […] Mechatronic design of an integrated robotic hand Historically, robotic hand research has tended to focus on two areas: severely underactuated hands, and high-degree-offreedom fully actuated hands. Comparatively little research has been done in between those spaces. Furthermore, despite the large number of robotic hand designs that have been proposed in the past few decades, very few robot hands are available for purchase […] Deep Learning with COTS HPC Systems Scaling up deep learning algorithms has been shown to lead to increased performance in benchmark tasks and to enable discovery of complex high-level features. Recent efforts to train extremely large networks (with over 1 billion parameters) have relied on cloud- like computing infrastructure and thousands of CPU cores. In this paper, we present technical details […] Parsing with Compositional Vector Grammars Natural language parsing has typically been done with small sets of discrete categories such as NP and VP, but this representation does not capture the full syntactic nor semantic richness of linguistic phrases, and attempts to improve on this by lexicalizing phrases or splitting categories only partly address the problem at the cost of huge […] Learning New Facts From Knowledge Bases With Neural Tensor Networks and Semantic Word Vectors Knowledge bases provide applications with the beneﬁt of easily accessible, systematic relational knowledge but often suffer in practice from their incompleteness and lack of knowledge of new entities and relations. Much work has focused on building or extending them by ﬁnding patterns in large unannotated text corpora. In contrast, here we mainly aim to complete […] An Experimental and Theoretical Comparison of Model Selection Methods In the model selection problem, we must balance the complexity of a statistical model with its goodness of fit to the training data. This problem arises repeatedly in statistical estimation, machine learning, and scientific inquiry in general. Instances of the model selection problem include choosing the best number of hidden nodes in a neural network, […] An Information-Theoretic Analysis of Hard and Soft Assignment Methods for Clustering Assignment methods are at the heart of many algorithms for unsupervised learning and clustering — in particular, the well-known -means and Expectation-Maximization (EM) algorithms. In this work, we study several different methods of assignment, including the Õhard” assignments used by -means and the Õsoft” assignments used by EM. While it is known that -means minimizes ",
+        "url": "https://www.andrewng.org/publications",
+        "page_type": "subpage"
+      },
+      {
+        "title": "Projects",
+        "description": "",
+        "sections": [
+          {
+            "heading": "Deep Learning and Unsupervised Feature Learning",
+            "content": "Machine learning and AI through large scale brain simulations (artificial neural networks)."
+          }
+        ],
+        "content": "Projects Deep Learning and Unsupervised Feature Learning Machine learning and AI through large scale brain simulations (artificial neural networks).",
+        "url": "https://www.andrewng.org/projects",
+        "page_type": "subpage"
+      },
+      {
+        "title": "Courses",
+        "description": "",
+        "sections": [],
+        "content": "Courses DeepLearning.AI’s Short Courses DeepLearning.AI ‘s short courses help you quickly learn the latest generative AI tools and techniques. These courses, created in collaboration with industry leaders, provide hands-on practice with developments in GenAI. Gain skills in prompt engineering, AI agents, retrieval augmented generation, and other key areas of the GenAI developer stack. Whether you’re a beginner or an experienced AI builder, these courses explore what’s possible with AI, and how to create it. Learn more Generative AI for Everyone Generative AI for Everyone offers a unique perspective on empowering your life and work with generative AI. This course teaches how generative AI works and what it can (and can’t) do. It includes hands-on exercises to practice using generative AI for day-to-day tasks, tips on effective prompt engineering, and exploration of advanced AI applications beyond prompting. The course examines real-world use cases to illustrate AI’s impact on business and society. Generative AI for Everyone was created to ensure everyone can actively participate in our AI-powered future. Learn more Machine Learning Specialization The Machine Learning Specialization is a foundational online program created in collaboration between DeepLearning.AI and Stanford Online. This beginner-friendly program will teach you the fundamentals of machine learning and how to use these techniques to build real-world AI applications. Learn more Deep Learning Specialization The Deep Learning Specialization is a foundational program that will help you understand the capabilities, challenges, and consequences of deep learning and prepare you to participate in the development of leading-edge AI technology. In this Specialization, you will build and train neural network architectures such as Convolutional Neural Networks, Recurrent Neural Networks, LSTMs, Transformers, and learn how to make them better with strategies such as Dropout, BatchNorm, Xavier/He initialization, and more. Get ready to master theoretical concepts and their industry applications using Python and TensorFlow and tackle real-world cases such as speech recognition, music synthesis, chatbots, machine translation, natural language processing, and more. AI is transforming many industries. The Deep Learning Specialization provides a pathway for you to take the definitive step in the world of AI by helping you gain the knowledge and skills to level up your career. Along the way, you will also get career advice from deep learning experts from industry and academia. Learn more AI For Everyone AI is not only for engineers. “AI for Everyone”, a non-technical course, will help you understand AI technologies and spot opportunities to apply AI to problems in your own organization. You will see examples of what today’s AI can – and cannot – do. Finally, you will understand how AI is impacting society and how to navigate through this technological change. If you are a non-technical business profess",
+        "url": "https://www.andrewng.org/courses",
+        "page_type": "subpage"
+      },
+      {
+        "title": "Contact",
+        "description": "",
+        "sections": [],
+        "content": "Contact Andrew Ng is affiliated with a number of institutions so please read the following carefully to determine the best way to contact him. Landing AI: If you have any business, partnership or press inquiries regarding Landing AI, or would like to learn more about AI solutions for enterprise environments, please visit our contact page or email hello@landing.ai . AI Fund: If you are interested in investing in AI Fund or have a question about AI Fund, please visit our contact page or email contact@aifund.ai . For all other inquiries (speaking requests, current Stanford students, DeepLearning.AI related, feedback on online courses, etc.), please use the following form so that your request is sent to the appropriate parties. View this form in new tab?",
+        "url": "https://www.andrewng.org/contact",
+        "page_type": "subpage"
+      },
+      {
+        "title": "",
+        "description": "",
+        "sections": [
+          {
+            "heading": "Joining my research group as an MS or PhD student",
+            "content": "Not currently a Stanford student Visit www.cs.stanford.edu/education/admissions for the application process. Due to high number of applicants I’m unable to respond to individual emails. I’d be happy to discuss the possibilities of working together once you are admitted. Currently a Stanford student. Current students of Stanford interested in getting involved with AI or Machine Learning Research, feel free to get in touch by sending your resume at ml-apply@cs.stanford.edu . This reaches me directly and I’d be happy to suggest a good fit in the right project. If you are a PhD student interested in working with me, feel free to reach me directly."
+          },
+          {
+            "heading": "Looking for an internship",
+            "content": "I am currently unable to accept interns who aren’t already studying at Stanford. Stanford undergraduates should apply through the CURIS program for internship opportunities. I’d encourage you to get involved in research well before summer; to do so, please email your resume to ml-apply@cs.stanford.edu ."
+          },
+          {
+            "heading": "Looking for a post doc/volunteer/other position",
+            "content": "Post docs and other paid positions: If you are experienced in Deep Learning, please feel free to get in touch, by emailing ml-apply@cs.stanford.edu . If you do not already have significant experience in Deep Learning, unfortunately I will not be able to offer you a position. Volunteer positions in machine learning, computer vision or AI: If you are familiar with these technologies and are currently based out of the San Francisco Bay Area, and have at least 20 hours/week to dedicate to a project, please feel free to get in touch. Please email a description of your background and interests to ml-apply@cs.stanford.edu . Robotics and Reinforcement learning: We do not currently have openings. Coursera: If you are interested in a position at Coursera rather than at Stanford, please go to www.jobs.coursera.org ."
+          },
+          {
+            "heading": "Individuals interested in helping with a machine learning project",
+            "content": "I appreciate your interest, unless you already are familiar with machine learning, are based in the SF Bay area, and want to volunteer >20 hours a week of your time, we currently we do not have any openings in machine learning projects. Machine learning has a significant social and economic impact on our society, to learn more please consider taking a free online course on machine learning at www.ml-class.org ."
+          },
+          {
+            "heading": "Want to learn more about machine learning",
+            "content": "I invite you to sign up for the free machine learning class I teach on Coursera, at www.ml-class.org . If you are interested in learning more about deep learning, please also see the tutorial at deeplearning.stanford.edu/wiki/ ."
+          },
+          {
+            "heading": "I represent a company, and am looking for help with a machine learning project.",
+            "content": "I get 2-3 requests a week from companies asking for machine learning advice, and 5-6 emails a week from people looking to hire machine learning students, and unfortunately just don’t have the capacity to respond individually. Our research projects are supported by generous sponsors. Funding the research work of one or two Stanford students for a year costs between $80,000 and $200,000. If you are interested in this possibility, please feel free to get in touch."
+          }
+        ],
+        "content": "Joining my research group as an MS or PhD student Not currently a Stanford student Visit www.cs.stanford.edu/education/admissions for the application process. Due to high number of applicants I’m unable to respond to individual emails. I’d be happy to discuss the possibilities of working together once you are admitted. Currently a Stanford student. Current students of Stanford interested in getting involved with AI or Machine Learning Research, feel free to get in touch by sending your resume at ml-apply@cs.stanford.edu . This reaches me directly and I’d be happy to suggest a good fit in the right project. If you are a PhD student interested in working with me, feel free to reach me directly. Looking for an internship I am currently unable to accept interns who aren’t already studying at Stanford. Stanford undergraduates should apply through the CURIS program for internship opportunities. I’d encourage you to get involved in research well before summer; to do so, please email your resume to ml-apply@cs.stanford.edu . Looking for a post doc/volunteer/other position Post docs and other paid positions: If you are experienced in Deep Learning, please feel free to get in touch, by emailing ml-apply@cs.stanford.edu . If you do not already have significant experience in Deep Learning, unfortunately I will not be able to offer you a position. Volunteer positions in machine learning, computer vision or AI: If you are familiar with these technologies and are currently based out of the San Francisco Bay Area, and have at least 20 hours/week to dedicate to a project, please feel free to get in touch. Please email a description of your background and interests to ml-apply@cs.stanford.edu . Robotics and Reinforcement learning: We do not currently have openings. Coursera: If you are interested in a position at Coursera rather than at Stanford, please go to www.jobs.coursera.org . Individuals interested in helping with a machine learning project I appreciate your interest, unless you already are familiar with machine learning, are based in the SF Bay area, and want to volunteer >20 hours a week of your time, we currently we do not have any openings in machine learning projects. Machine learning has a significant social and economic impact on our society, to learn more please consider taking a free online course on machine learning at www.ml-class.org . Want to learn more about machine learning I invite you to sign up for the free machine learning class I teach on Coursera, at www.ml-class.org . If you are interested in learning more about deep learning, please also see the tutorial at deeplearning.stanford.edu/wiki/ . I represent a company, and am looking for help with a machine learning project. I get 2-3 requests a week from companies asking for machine learning advice, and 5-6 emails a week from people looking to hire machine learning students, and unfortunately just don’t have the capacity to respond individually. Our research projects are supported by gener",
+        "url": "https://www.andrewng.org/faq",
+        "page_type": "subpage"
+      },
+      {
+        "title": "",
+        "description": "",
+        "sections": [],
+        "content": "Abstract Online education has been around for decades,with many universities offering online courses to a small, limited audience.What changed in 2011 was scale and availability, when Stanford University offered three courses free to the public, each garnering signups of about 100,000 learners or more.The launch of these three courses, taught by Andrew Ng, Peter Norvig, Sebastian Thrun and Jennifer Widom, arguably marked the start of the modern, instructor-­‐directed MOOC (sometimes“xMOOC”). Each of these MOOCs offered learners the opportunity to watch online lectures, do machine-­‐graded homework, and earn a “Statement of Accomplishment” if they passed the class.",
+        "url": "https://www.andrewng.org/publications/origins-of-the-modern-mooc-xmooc",
+        "page_type": "subpage"
+      },
+      {
+        "title": "",
+        "description": "",
+        "sections": [],
+        "content": "Abstract Historically, robotic hand research has tended to focus on two areas: severely underactuated hands, and high-degree-offreedom fully actuated hands. Comparatively little research has been done in between those spaces. Furthermore, despite the large number of robotic hand designs that have been proposed in the past few decades, very few robot hands are available for purchase on the commercial market. In this paper, we present a hand designed for minimalistic dexterous manipulation, in which every stage of the design process also considered its manufacturing cost. We discuss the various trade-offs made in the design. Finally, we present the results of experiments in which the robotic hand was affixed to a manipulator arm and tele-operated to grasp and manipulate a variety of objects.",
+        "url": "https://www.andrewng.org/publications/mechatronic-design-of-an-integrated-robotic-hand",
+        "page_type": "subpage"
+      },
+      {
+        "title": "",
+        "description": "",
+        "sections": [],
+        "content": "Abstract Scaling up deep learning algorithms has been shown to lead to increased performance in benchmark tasks and to enable discovery of complex high-level features. Recent efforts to train extremely large networks (with over 1 billion parameters) have relied on cloud- like computing infrastructure and thousands of CPU cores. In this paper, we present technical details and results from our own system based on Commodity Off-The-Shelf High Performance Computing (COTS HPC) technology: a cluster of GPU servers with Infini-band interconnects and MPI. Our system is able to train 1 billion parameter networks on just 3 machines in a couple of days, and we show that it can scale to networks with over 11 billion parameters using just 16 machines. As this infrastructure is much more easily marshaled by others, the approach enables much wider-spread research with extremely large neural networks.",
+        "url": "https://www.andrewng.org/publications/deep-learning-with-cots-hpc-systems",
+        "page_type": "subpage"
+      }
+    ]
+  },
+  "secondary_content": {
+    "source": "web_search",
+    "reliability": "medium",
+    "searches": [
+      {
+        "index": 1,
+        "result": "DeepLearning.AI, founded by Dr. Andrew Ng, offers a range of AI courses through its platform and Coursera. Their offerings include foundational specializations, skill-specific short courses, and professional certificates, covering topics from machine learning to deep learning and data analytics. ([learn.deeplearning.ai](https://learn.deeplearning.ai/?utm_source=openai))\n\nPricing varies based on the course and platform. For instance, the Deep Learning Specialization on Coursera costs $49 per month, with an estimated completion time of 4–5 months. ([learn.deeplearning.ai](https://learn.deeplearning.ai/specializations/deep-learning/information?utm_source=openai)) DeepLearning.AI also provides a membership model with three tiers:\n\n- **Basic**: Free access to course videos, community forums, and limited content.\n- **Pro**: $25 per month, offering hands-on labs, professional certificates, and exclusive courses from Andrew Ng.\n- **Pro+**: $45 per month, including all Pro features plus additio"
+      },
+      {
+        "index": 2,
+        "result": "Dr. Andrew Ng, a prominent figure in artificial intelligence, has been involved in several recent projects:\n\n- **Generative AI for Everyone**: A course designed to empower individuals with generative AI, covering its workings, applications, and hands-on exercises. ([wordpress.andrewng.org](https://wordpress.andrewng.org/index.php/courses/generative-ai-for-everyone/?utm_source=openai))\n\n- **Deep Learning with COTS HPC Systems**: Research on scaling deep learning algorithms using commodity off-the-shelf high-performance computing systems, achieving significant performance improvements. ([wordpress.andrewng.org](https://wordpress.andrewng.org/index.php/publication/deep-learning-with-cots-hpc-systems/?utm_source=openai))\n\n- **Improving Word Representations via Global Context and Multiple Word Prototypes**: Development of a neural network architecture that enhances word embeddings by incorporating both local and global context, addressing issues of polysemy. ([wordpress.andrewng.org](https:"
+      },
+      {
+        "index": 3,
+        "result": "Andrew Ng has spearheaded several significant AI initiatives:\n\n- **DeepLearning.AI**: Founded in 2017, this educational technology company offers specialized AI courses, including the \"AI For Everyone\" program, designed to make AI accessible to non-technical audiences. ([andrewng.org](https://www.andrewng.org/about/?utm_source=openai))\n\n- **LandingAI**: Established in 2017, LandingAI focuses on helping companies leverage visual data to build and deploy AI solutions. Its platform, LandingLens™, enables businesses to develop computer vision applications tailored to their specific needs. ([landing.ai](https://landing.ai/about-us/?utm_source=openai))\n\n- **AI Fund**: Launched in 2018 with $175 million in funding, the AI Fund invests in AI startups. In October 2024, it made its first investment in India, backing Jivi, an AI-driven healthcare startup. ([reuters.com](https://www.reuters.com/technology/artificial-intelligence/andrew-ngs-fund-makes-first-india-investment-with-ai-healthcare-firm-"
+      }
+    ]
+  }
+}

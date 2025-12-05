@@ -1,0 +1,49 @@
+{
+  "metadata": {
+    "url": "https://www.keybr.com/",
+    "name": "Keybr",
+    "created_at": "2025-12-04T23:18:12.490612",
+    "pages_scraped": 1,
+    "has_web_search_supplement": true
+  },
+  "primary_content": {
+    "source": "website_scraping",
+    "reliability": "high",
+    "pages": [
+      {
+        "title": "Practice",
+        "description": "Typing practice lessons to improve your speed and accuracy.",
+        "sections": [],
+        "content": "",
+        "url": "https://www.keybr.com",
+        "page_type": "homepage"
+      }
+    ]
+  },
+  "secondary_content": {
+    "source": "web_search",
+    "reliability": "medium",
+    "searches": [
+      {
+        "index": 1,
+        "result": "Keybr offers a free online typing tutor without any pricing plans. Users can access all features without a subscription or payment. The platform provides typing lessons, exercises, and progress tracking at no cost. For more information, visit their website at https://www.keybr.com/. "
+      },
+      {
+        "index": 2,
+        "result": "Keybr.com is a typing practice website launched in 2015. ([producthunt.com](https://www.producthunt.com/posts/keybr?comment=100719&utm_source=openai)) The domain was registered on September 13, 2007, indicating its establishment over 18 years ago. ([gridinsoft.com](https://gridinsoft.com/online-virus-scanner/url/keybr-com?utm_source=openai)) The website is hosted by Cloudflare, Inc., with IP addresses 104.26.14.166, 104.26.15.166, and 172.67.72.33. ([website.informer.com](https://website.informer.com/keybr.com?utm_source=openai)) The domain is registered through GoDaddy.com, LLC, with the owner listed as \"Registration Private (Domains By Proxy, LLC).\" ([website.informer.com](https://website.informer.com/keybr.com?utm_source=openai)) The website has a global Alexa rank of 17,331, indicating significant traffic. ([keybr.com.usitestat.com](https://keybr.com.usitestat.com/?utm_source=openai)) The site has received positive reviews, with a trust score of 80.8 out of 100 from Scam Detector, "
+      },
+      {
+        "index": 3,
+        "result": "Keybr.com is a free online typing tool designed to enhance typing speed and accuracy through personalized, adaptive lessons. Its key features include:\n\n- **Adaptive Learning Algorithm**: Analyzes individual typing patterns to generate customized lessons, focusing on areas needing improvement. ([techlyday.com](https://techlyday.com/public/blog/keybr-a-free-online-tool-to-improve-touch-typing-skills?utm_source=openai))\n\n- **Real-Time Performance Tracking**: Provides instant feedback on typing speed (words per minute), accuracy, and error rates, helping users monitor progress and identify weak points. ([techlyday.com](https://techlyday.com/public/blog/keybr-a-free-online-tool-to-improve-touch-typing-skills?utm_source=openai))\n\n- **Multilingual Support**: Offers typing practice in multiple languages, accommodating a diverse user base. ([multilingual-keyboard.com](https://multilingual-keyboard.com/keybr?utm_source=openai))\n\n- **Customizable Keyboard Layouts**: Supports various layouts, incl"
+      },
+      {
+        "index": 4,
+        "result": "Keybr.com is an online typing tutor designed to enhance typing speed and accuracy through personalized exercises. It generates random text sequences that adapt to the user's skill level, focusing on frequently used letter combinations to improve muscle memory. The platform emphasizes touch typing, encouraging users to keep their eyes on the screen and avoid looking at the keyboard, which aids in developing proper finger placement and reduces the habit of peeking. ([typingtestnow.com](https://typingtestnow.com/page/typing/typing-practice-keybr.html?utm_source=openai))\n\nTo maximize benefits, Keybr.com recommends consistent daily practice sessions of 15–30 minutes, which are more effective than longer, infrequent sessions. This approach helps in building muscle memory and cognitive recall. The platform also offers real-time feedback, displaying typing statistics such as words per minute (WPM), accuracy rates, and error analysis, allowing users to monitor progress and identify areas for im"
+      },
+      {
+        "index": 5,
+        "result": "Keybr.com, a typing practice platform, has received positive feedback from users. On Trustpilot, it holds a 3.8 out of 5 rating based on two reviews. Users have praised its effectiveness in improving typing speed and accuracy. For instance, Ritik Kumar mentioned that the site is beneficial for those dedicated to increasing their typing speed. Samuel Welch described it as fun, engaging, and extremely helpful, recommending it to everyone. ([trustpilot.com](https://www.trustpilot.com/review/www.keybr.com?utm_source=openai))\n\nIn a Medium article, Rama Komarudin Soemardja shared a personal experience of using Keybr.com to enhance typing skills, highlighting its role in boosting productivity. ([medium.com](https://medium.com/%40rsoemardja/mastering-the-keyboard-my-journey-to-boost-productivity-keybr-com-9f3a768cf490?utm_source=openai))\n\nAdditionally, discussions on Google Groups reveal users reporting significant improvements in typing speed after using Keybr.com. One user increased their av"
+      }
+    ]
+  }
+}

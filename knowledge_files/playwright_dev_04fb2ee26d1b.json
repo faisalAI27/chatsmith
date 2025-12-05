@@ -1,0 +1,395 @@
+{
+  "metadata": {
+    "url": "https://playwright.dev",
+    "name": "Playwright",
+    "created_at": "2025-12-04T21:43:42.743251",
+    "pages_scraped": 10,
+    "has_web_search_supplement": true
+  },
+  "primary_content": {
+    "source": "website_scraping",
+    "reliability": "high",
+    "pages": [
+      {
+        "title": "Fast and reliable end-to-end testing for modern web apps | Playwright",
+        "description": "Cross-browser end-to-end testing for modern web apps",
+        "sections": [
+          {
+            "heading": "Any browser • Any platform • One API",
+            "content": "Cross-browser. Playwright supports all modern rendering engines including Chromium, WebKit, and Firefox. Cross-platform. Test on Windows, Linux, and macOS, locally or on CI, headless or headed. Cross-language. Use the Playwright API in TypeScript , JavaScript , Python , .NET , Java . Test Mobile Web. Native mobile emulation of Google Chrome for Android and Mobile Safari. The same rendering engine works on your Desktop and in the Cloud."
+          },
+          {
+            "heading": "Resilient • No flaky tests",
+            "content": "Auto-wait. Playwright waits for elements to be actionable prior to performing actions. It also has a rich set of introspection events. The combination of the two eliminates the need for artificial timeouts - the primary cause of flaky tests. Web-first assertions. Playwright assertions are created specifically for the dynamic web. Checks are automatically retried until the necessary conditions are met. Tracing. Configure test retry strategy, capture execution trace, videos, screenshots to eliminate flakes."
+          },
+          {
+            "heading": "No trade-offs • No limits",
+            "content": "Browsers run web content belonging to different origins in different processes. Playwright is aligned with the modern browsers architecture and runs tests out-of-process. This makes Playwright free of the typical in-process test runner limitations. Multiple everything. Test scenarios that span multiple tabs , multiple origins and multiple users . Create scenarios with different contexts for different users and run them against your server, all in one test. Trusted events. Hover elements, interact with dynamic controls, produce trusted events. Playwright uses real browser input pipeline indistinguishable from the real user. Test frames, pierce Shadow DOM. Playwright selectors pierce shadow DOM and allow entering frames seamlessly."
+          },
+          {
+            "heading": "Full isolation • Fast execution",
+            "content": "Browser contexts. Playwright creates a browser context for each test. Browser context is equivalent to a brand new browser profile. This delivers full test isolation with zero overhead. Creating a new browser context only takes a handful of milliseconds. Log in once. Save the authentication state of the context and reuse it in all the tests. This bypasses repetitive log-in operations in each test, yet delivers full isolation of independent tests."
+          },
+          {
+            "heading": "Powerful Tooling",
+            "content": "Codegen. Generate tests by recording your actions. Save them into any language. Playwright inspector. Inspect page, generate selectors, step through the test execution, see click points, explore execution logs. Trace Viewer. Capture all the information to investigate the test failure. Playwright trace contains test execution screencast, live DOM snapshots, action explorer, test source, and many more."
+          }
+        ],
+        "content": "Any browser • Any platform • One API Cross-browser. Playwright supports all modern rendering engines including Chromium, WebKit, and Firefox. Cross-platform. Test on Windows, Linux, and macOS, locally or on CI, headless or headed. Cross-language. Use the Playwright API in TypeScript , JavaScript , Python , .NET , Java . Test Mobile Web. Native mobile emulation of Google Chrome for Android and Mobile Safari. The same rendering engine works on your Desktop and in the Cloud. Resilient • No flaky tests Auto-wait. Playwright waits for elements to be actionable prior to performing actions. It also has a rich set of introspection events. The combination of the two eliminates the need for artificial timeouts - the primary cause of flaky tests. Web-first assertions. Playwright assertions are created specifically for the dynamic web. Checks are automatically retried until the necessary conditions are met. Tracing. Configure test retry strategy, capture execution trace, videos, screenshots to eliminate flakes. No trade-offs • No limits Browsers run web content belonging to different origins in different processes. Playwright is aligned with the modern browsers architecture and runs tests out-of-process. This makes Playwright free of the typical in-process test runner limitations. Multiple everything. Test scenarios that span multiple tabs , multiple origins and multiple users . Create scenarios with different contexts for different users and run them against your server, all in one test. Trusted events. Hover elements, interact with dynamic controls, produce trusted events. Playwright uses real browser input pipeline indistinguishable from the real user. Test frames, pierce Shadow DOM. Playwright selectors pierce shadow DOM and allow entering frames seamlessly. Full isolation • Fast execution Browser contexts. Playwright creates a browser context for each test. Browser context is equivalent to a brand new browser profile. This delivers full test isolation with zero overhead. Creating a new browser context only takes a handful of milliseconds. Log in once. Save the authentication state of the context and reuse it in all the tests. This bypasses repetitive log-in operations in each test, yet delivers full isolation of independent tests. Powerful Tooling Codegen. Generate tests by recording your actions. Save them into any language. Playwright inspector. Inspect page, generate selectors, step through the test execution, see click points, explore execution logs. Trace Viewer. Capture all the information to investigate the test failure. Playwright trace contains test execution screencast, live DOM snapshots, action explorer, test source, and many more. Chosen by companies and open source projects",
+        "url": "https://playwright.dev",
+        "page_type": "homepage"
+      },
+      {
+        "title": "Installation | Playwright",
+        "description": "Introduction",
+        "sections": [
+          {
+            "heading": "Introduction​",
+            "content": "Playwright Test is an end-to-end test framework for modern web apps. It bundles test runner, assertions, isolation, parallelization and rich tooling. Playwright supports Chromium, WebKit and Firefox on Windows, Linux and macOS, locally or in CI, headless or headed, with native mobile emulation for Chrome (Android) and Mobile Safari. How to install Playwright What's installed How to run the example test How to open the HTML test report"
+          },
+          {
+            "heading": "Installing Playwright​",
+            "content": "Get started by installing Playwright using one of the following methods."
+          },
+          {
+            "heading": "Using npm, yarn or pnpm​",
+            "content": "The command below either initializes a new project or adds Playwright to an existing one. npm yarn pnpm npm init playwright@latest yarn create playwright pnpm create playwright When prompted, choose / confirm: TypeScript or JavaScript (default: TypeScript) Tests folder name (default: tests , or e2e if tests already exists) Add a GitHub Actions workflow (recommended for CI) Install Playwright browsers (default: yes) You can re-run the command later; it does not overwrite existing tests."
+          },
+          {
+            "heading": "Using the VS Code Extension​",
+            "content": "You can also create and run tests with the VS Code Extension ."
+          },
+          {
+            "heading": "What's Installed​",
+            "content": "Playwright downloads required browser binaries and creates the scaffold below. playwright.config.ts package.json package-lock.json tests/ example.spec.ts The playwright.config centralizes configuration: target browsers, timeouts, retries, projects, reporters and more. In existing projects dependencies are added to your current package.json . tests/ contains a minimal starter test."
+          },
+          {
+            "heading": "Running the Example Test​",
+            "content": "By default tests run headless in parallel across Chromium, Firefox and WebKit (configurable in playwright.config ). Output and aggregated results display in the terminal. npm yarn pnpm npx playwright test yarn playwright test pnpm exec playwright test See the browser window: add --headed . Run a single project/browser: --project=chromium . Run one file: npx playwright test tests/example.spec.ts . Open testing UI: --ui . See Running Tests for details on filtering, headed mode, sharding and retries."
+          },
+          {
+            "heading": "HTML Test Reports​",
+            "content": "After a test run, the HTML Reporter provides a dashboard filterable by the browser, passed, failed, skipped, flaky and more. Click a test to inspect errors, attachments and steps. It auto-opens only when failures occur; open manually with the command below. npm yarn pnpm npx playwright show-report yarn playwright show-report pnpm exec playwright show-report"
+          },
+          {
+            "heading": "Running the Example Test in UI Mode​",
+            "content": "Run tests with UI Mode for watch mode, live step view, time travel debugging and more. npm yarn pnpm npx playwright test --ui yarn playwright test --ui pnpm exec playwright test --ui See the detailed guide on UI Mode for watch filters, step details and trace integration."
+          },
+          {
+            "heading": "Updating Playwright​",
+            "content": "Update Playwright and download new browser binaries and their dependencies: npm yarn pnpm npm install -D @playwright/test@latest npx playwright install --with-deps yarn add --dev @playwright/test@latest yarn playwright install --with-deps pnpm install --save-dev @playwright/test@latest pnpm exec playwright install --with-deps Check your installed version: npm yarn pnpm npx playwright --version yarn playwright --version pnpm exec playwright --version"
+          },
+          {
+            "heading": "System requirements​",
+            "content": "Node.js: latest 20.x, 22.x or 24.x. Windows 11+, Windows Server 2019+ or Windows Subsystem for Linux (WSL). macOS 14 (Ventura) or later. Debian 12 / 13, Ubuntu 22.04 / 24.04 (x86-64 or arm64)."
+          }
+        ],
+        "content": "On this page Introduction ​ Playwright Test is an end-to-end test framework for modern web apps. It bundles test runner, assertions, isolation, parallelization and rich tooling. Playwright supports Chromium, WebKit and Firefox on Windows, Linux and macOS, locally or in CI, headless or headed, with native mobile emulation for Chrome (Android) and Mobile Safari. You will learn How to install Playwright What's installed How to run the example test How to open the HTML test report Installing Playwright ​ Get started by installing Playwright using one of the following methods. Using npm, yarn or pnpm ​ The command below either initializes a new project or adds Playwright to an existing one. npm yarn pnpm npm init playwright@latest yarn create playwright pnpm create playwright When prompted, choose / confirm: TypeScript or JavaScript (default: TypeScript) Tests folder name (default: tests , or e2e if tests already exists) Add a GitHub Actions workflow (recommended for CI) Install Playwright browsers (default: yes) You can re-run the command later; it does not overwrite existing tests. Using the VS Code Extension ​ You can also create and run tests with the VS Code Extension . What's Installed ​ Playwright downloads required browser binaries and creates the scaffold below. playwright.config.ts package.json package-lock.json tests/ example.spec.ts The playwright.config centralizes configuration: target browsers, timeouts, retries, projects, reporters and more. In existing projects dependencies are added to your current package.json . tests/ contains a minimal starter test. Running the Example Test ​ By default tests run headless in parallel across Chromium, Firefox and WebKit (configurable in playwright.config ). Output and aggregated results display in the terminal. npm yarn pnpm npx playwright test yarn playwright test pnpm exec playwright test Tips: See the browser window: add --headed . Run a single project/browser: --project=chromium . Run one file: npx playwright test tests/example.spec.ts . Open testing UI: --ui . See Running Tests for details on filtering, headed mode, sharding and retries. HTML Test Reports ​ After a test run, the HTML Reporter provides a dashboard filterable by the browser, passed, failed, skipped, flaky and more. Click a test to inspect errors, attachments and steps. It auto-opens only when failures occur; open manually with the command below. npm yarn pnpm npx playwright show-report yarn playwright show-report pnpm exec playwright show-report Running the Example Test in UI Mode ​ Run tests with UI Mode for watch mode, live step view, time travel debugging and more. npm yarn pnpm npx playwright test --ui yarn playwright test --ui pnpm exec playwright test --ui See the detailed guide on UI Mode for watch filters, step details and trace integration. Updating Playwright ​ Update Playwright and download new browser binaries and their dependencies: npm yarn pnpm npm install -D @playwright/test@latest npx playwright install --with-d",
+        "url": "https://playwright.dev/docs/intro",
+        "page_type": "subpage"
+      },
+      {
+        "title": "Fast and reliable end-to-end testing for modern web apps | Playwright Python",
+        "description": "Cross-browser end-to-end testing for modern web apps",
+        "sections": [
+          {
+            "heading": "Any browser • Any platform • One API",
+            "content": "Cross-browser. Playwright supports all modern rendering engines including Chromium, WebKit, and Firefox. Cross-platform. Test on Windows, Linux, and macOS, locally or on CI, headless or headed. Cross-language. Use the Playwright API in TypeScript , JavaScript , Python , .NET , Java . Test Mobile Web. Native mobile emulation of Google Chrome for Android and Mobile Safari. The same rendering engine works on your Desktop and in the Cloud."
+          },
+          {
+            "heading": "Resilient • No flaky tests",
+            "content": "Auto-wait. Playwright waits for elements to be actionable prior to performing actions. It also has a rich set of introspection events. The combination of the two eliminates the need for artificial timeouts - the primary cause of flaky tests. Web-first assertions. Playwright assertions are created specifically for the dynamic web. Checks are automatically retried until the necessary conditions are met. Tracing. Configure test retry strategy, capture execution trace, videos, screenshots to eliminate flakes."
+          },
+          {
+            "heading": "No trade-offs • No limits",
+            "content": "Browsers run web content belonging to different origins in different processes. Playwright is aligned with the modern browsers architecture and runs tests out-of-process. This makes Playwright free of the typical in-process test runner limitations. Multiple everything. Test scenarios that span multiple tabs , multiple origins and multiple users . Create scenarios with different contexts for different users and run them against your server, all in one test. Trusted events. Hover elements, interact with dynamic controls, produce trusted events. Playwright uses real browser input pipeline indistinguishable from the real user. Test frames, pierce Shadow DOM. Playwright selectors pierce shadow DOM and allow entering frames seamlessly."
+          },
+          {
+            "heading": "Full isolation • Fast execution",
+            "content": "Browser contexts. Playwright creates a browser context for each test. Browser context is equivalent to a brand new browser profile. This delivers full test isolation with zero overhead. Creating a new browser context only takes a handful of milliseconds. Log in once. Save the authentication state of the context and reuse it in all the tests. This bypasses repetitive log-in operations in each test, yet delivers full isolation of independent tests."
+          },
+          {
+            "heading": "Powerful Tooling",
+            "content": "Codegen. Generate tests by recording your actions. Save them into any language. Playwright inspector. Inspect page, generate selectors, step through the test execution, see click points, explore execution logs. Trace Viewer. Capture all the information to investigate the test failure. Playwright trace contains test execution screencast, live DOM snapshots, action explorer, test source, and many more."
+          }
+        ],
+        "content": "Any browser • Any platform • One API Cross-browser. Playwright supports all modern rendering engines including Chromium, WebKit, and Firefox. Cross-platform. Test on Windows, Linux, and macOS, locally or on CI, headless or headed. Cross-language. Use the Playwright API in TypeScript , JavaScript , Python , .NET , Java . Test Mobile Web. Native mobile emulation of Google Chrome for Android and Mobile Safari. The same rendering engine works on your Desktop and in the Cloud. Resilient • No flaky tests Auto-wait. Playwright waits for elements to be actionable prior to performing actions. It also has a rich set of introspection events. The combination of the two eliminates the need for artificial timeouts - the primary cause of flaky tests. Web-first assertions. Playwright assertions are created specifically for the dynamic web. Checks are automatically retried until the necessary conditions are met. Tracing. Configure test retry strategy, capture execution trace, videos, screenshots to eliminate flakes. No trade-offs • No limits Browsers run web content belonging to different origins in different processes. Playwright is aligned with the modern browsers architecture and runs tests out-of-process. This makes Playwright free of the typical in-process test runner limitations. Multiple everything. Test scenarios that span multiple tabs , multiple origins and multiple users . Create scenarios with different contexts for different users and run them against your server, all in one test. Trusted events. Hover elements, interact with dynamic controls, produce trusted events. Playwright uses real browser input pipeline indistinguishable from the real user. Test frames, pierce Shadow DOM. Playwright selectors pierce shadow DOM and allow entering frames seamlessly. Full isolation • Fast execution Browser contexts. Playwright creates a browser context for each test. Browser context is equivalent to a brand new browser profile. This delivers full test isolation with zero overhead. Creating a new browser context only takes a handful of milliseconds. Log in once. Save the authentication state of the context and reuse it in all the tests. This bypasses repetitive log-in operations in each test, yet delivers full isolation of independent tests. Powerful Tooling Codegen. Generate tests by recording your actions. Save them into any language. Playwright inspector. Inspect page, generate selectors, step through the test execution, see click points, explore execution logs. Trace Viewer. Capture all the information to investigate the test failure. Playwright trace contains test execution screencast, live DOM snapshots, action explorer, test source, and many more. Chosen by companies and open source projects",
+        "url": "https://playwright.dev/python",
+        "page_type": "subpage"
+      },
+      {
+        "title": "Fast and reliable end-to-end testing for modern web apps | Playwright Java",
+        "description": "Cross-browser end-to-end testing for modern web apps",
+        "sections": [
+          {
+            "heading": "Any browser • Any platform • One API",
+            "content": "Cross-browser. Playwright supports all modern rendering engines including Chromium, WebKit, and Firefox. Cross-platform. Test on Windows, Linux, and macOS, locally or on CI, headless or headed. Cross-language. Use the Playwright API in TypeScript , JavaScript , Python , .NET , Java . Test Mobile Web. Native mobile emulation of Google Chrome for Android and Mobile Safari. The same rendering engine works on your Desktop and in the Cloud."
+          },
+          {
+            "heading": "Resilient • No flaky tests",
+            "content": "Auto-wait. Playwright waits for elements to be actionable prior to performing actions. It also has a rich set of introspection events. The combination of the two eliminates the need for artificial timeouts - the primary cause of flaky tests. Web-first assertions. Playwright assertions are created specifically for the dynamic web. Checks are automatically retried until the necessary conditions are met. Tracing. Configure test retry strategy, capture execution trace, videos, screenshots to eliminate flakes."
+          },
+          {
+            "heading": "No trade-offs • No limits",
+            "content": "Browsers run web content belonging to different origins in different processes. Playwright is aligned with the modern browsers architecture and runs tests out-of-process. This makes Playwright free of the typical in-process test runner limitations. Multiple everything. Test scenarios that span multiple tabs , multiple origins and multiple users . Create scenarios with different contexts for different users and run them against your server, all in one test. Trusted events. Hover elements, interact with dynamic controls, produce trusted events. Playwright uses real browser input pipeline indistinguishable from the real user. Test frames, pierce Shadow DOM. Playwright selectors pierce shadow DOM and allow entering frames seamlessly."
+          },
+          {
+            "heading": "Full isolation • Fast execution",
+            "content": "Browser contexts. Playwright creates a browser context for each test. Browser context is equivalent to a brand new browser profile. This delivers full test isolation with zero overhead. Creating a new browser context only takes a handful of milliseconds. Log in once. Save the authentication state of the context and reuse it in all the tests. This bypasses repetitive log-in operations in each test, yet delivers full isolation of independent tests."
+          },
+          {
+            "heading": "Powerful Tooling",
+            "content": "Codegen. Generate tests by recording your actions. Save them into any language. Playwright inspector. Inspect page, generate selectors, step through the test execution, see click points, explore execution logs. Trace Viewer. Capture all the information to investigate the test failure. Playwright trace contains test execution screencast, live DOM snapshots, action explorer, test source, and many more."
+          }
+        ],
+        "content": "Any browser • Any platform • One API Cross-browser. Playwright supports all modern rendering engines including Chromium, WebKit, and Firefox. Cross-platform. Test on Windows, Linux, and macOS, locally or on CI, headless or headed. Cross-language. Use the Playwright API in TypeScript , JavaScript , Python , .NET , Java . Test Mobile Web. Native mobile emulation of Google Chrome for Android and Mobile Safari. The same rendering engine works on your Desktop and in the Cloud. Resilient • No flaky tests Auto-wait. Playwright waits for elements to be actionable prior to performing actions. It also has a rich set of introspection events. The combination of the two eliminates the need for artificial timeouts - the primary cause of flaky tests. Web-first assertions. Playwright assertions are created specifically for the dynamic web. Checks are automatically retried until the necessary conditions are met. Tracing. Configure test retry strategy, capture execution trace, videos, screenshots to eliminate flakes. No trade-offs • No limits Browsers run web content belonging to different origins in different processes. Playwright is aligned with the modern browsers architecture and runs tests out-of-process. This makes Playwright free of the typical in-process test runner limitations. Multiple everything. Test scenarios that span multiple tabs , multiple origins and multiple users . Create scenarios with different contexts for different users and run them against your server, all in one test. Trusted events. Hover elements, interact with dynamic controls, produce trusted events. Playwright uses real browser input pipeline indistinguishable from the real user. Test frames, pierce Shadow DOM. Playwright selectors pierce shadow DOM and allow entering frames seamlessly. Full isolation • Fast execution Browser contexts. Playwright creates a browser context for each test. Browser context is equivalent to a brand new browser profile. This delivers full test isolation with zero overhead. Creating a new browser context only takes a handful of milliseconds. Log in once. Save the authentication state of the context and reuse it in all the tests. This bypasses repetitive log-in operations in each test, yet delivers full isolation of independent tests. Powerful Tooling Codegen. Generate tests by recording your actions. Save them into any language. Playwright inspector. Inspect page, generate selectors, step through the test execution, see click points, explore execution logs. Trace Viewer. Capture all the information to investigate the test failure. Playwright trace contains test execution screencast, live DOM snapshots, action explorer, test source, and many more. Chosen by companies and open source projects",
+        "url": "https://playwright.dev/java",
+        "page_type": "subpage"
+      },
+      {
+        "title": "Fast and reliable end-to-end testing for modern web apps | Playwright .NET",
+        "description": "Cross-browser end-to-end testing for modern web apps",
+        "sections": [
+          {
+            "heading": "Any browser • Any platform • One API",
+            "content": "Cross-browser. Playwright supports all modern rendering engines including Chromium, WebKit, and Firefox. Cross-platform. Test on Windows, Linux, and macOS, locally or on CI, headless or headed. Cross-language. Use the Playwright API in TypeScript , JavaScript , Python , .NET , Java . Test Mobile Web. Native mobile emulation of Google Chrome for Android and Mobile Safari. The same rendering engine works on your Desktop and in the Cloud."
+          },
+          {
+            "heading": "Resilient • No flaky tests",
+            "content": "Auto-wait. Playwright waits for elements to be actionable prior to performing actions. It also has a rich set of introspection events. The combination of the two eliminates the need for artificial timeouts - the primary cause of flaky tests. Web-first assertions. Playwright assertions are created specifically for the dynamic web. Checks are automatically retried until the necessary conditions are met. Tracing. Configure test retry strategy, capture execution trace, videos, screenshots to eliminate flakes."
+          },
+          {
+            "heading": "No trade-offs • No limits",
+            "content": "Browsers run web content belonging to different origins in different processes. Playwright is aligned with the modern browsers architecture and runs tests out-of-process. This makes Playwright free of the typical in-process test runner limitations. Multiple everything. Test scenarios that span multiple tabs , multiple origins and multiple users . Create scenarios with different contexts for different users and run them against your server, all in one test. Trusted events. Hover elements, interact with dynamic controls, produce trusted events. Playwright uses real browser input pipeline indistinguishable from the real user. Test frames, pierce Shadow DOM. Playwright selectors pierce shadow DOM and allow entering frames seamlessly."
+          },
+          {
+            "heading": "Full isolation • Fast execution",
+            "content": "Browser contexts. Playwright creates a browser context for each test. Browser context is equivalent to a brand new browser profile. This delivers full test isolation with zero overhead. Creating a new browser context only takes a handful of milliseconds. Log in once. Save the authentication state of the context and reuse it in all the tests. This bypasses repetitive log-in operations in each test, yet delivers full isolation of independent tests."
+          },
+          {
+            "heading": "Powerful Tooling",
+            "content": "Codegen. Generate tests by recording your actions. Save them into any language. Playwright inspector. Inspect page, generate selectors, step through the test execution, see click points, explore execution logs. Trace Viewer. Capture all the information to investigate the test failure. Playwright trace contains test execution screencast, live DOM snapshots, action explorer, test source, and many more."
+          }
+        ],
+        "content": "Any browser • Any platform • One API Cross-browser. Playwright supports all modern rendering engines including Chromium, WebKit, and Firefox. Cross-platform. Test on Windows, Linux, and macOS, locally or on CI, headless or headed. Cross-language. Use the Playwright API in TypeScript , JavaScript , Python , .NET , Java . Test Mobile Web. Native mobile emulation of Google Chrome for Android and Mobile Safari. The same rendering engine works on your Desktop and in the Cloud. Resilient • No flaky tests Auto-wait. Playwright waits for elements to be actionable prior to performing actions. It also has a rich set of introspection events. The combination of the two eliminates the need for artificial timeouts - the primary cause of flaky tests. Web-first assertions. Playwright assertions are created specifically for the dynamic web. Checks are automatically retried until the necessary conditions are met. Tracing. Configure test retry strategy, capture execution trace, videos, screenshots to eliminate flakes. No trade-offs • No limits Browsers run web content belonging to different origins in different processes. Playwright is aligned with the modern browsers architecture and runs tests out-of-process. This makes Playwright free of the typical in-process test runner limitations. Multiple everything. Test scenarios that span multiple tabs , multiple origins and multiple users . Create scenarios with different contexts for different users and run them against your server, all in one test. Trusted events. Hover elements, interact with dynamic controls, produce trusted events. Playwright uses real browser input pipeline indistinguishable from the real user. Test frames, pierce Shadow DOM. Playwright selectors pierce shadow DOM and allow entering frames seamlessly. Full isolation • Fast execution Browser contexts. Playwright creates a browser context for each test. Browser context is equivalent to a brand new browser profile. This delivers full test isolation with zero overhead. Creating a new browser context only takes a handful of milliseconds. Log in once. Save the authentication state of the context and reuse it in all the tests. This bypasses repetitive log-in operations in each test, yet delivers full isolation of independent tests. Powerful Tooling Codegen. Generate tests by recording your actions. Save them into any language. Playwright inspector. Inspect page, generate selectors, step through the test execution, see click points, explore execution logs. Trace Viewer. Capture all the information to investigate the test failure. Playwright trace contains test execution screencast, live DOM snapshots, action explorer, test source, and many more. Chosen by companies and open source projects",
+        "url": "https://playwright.dev/dotnet",
+        "page_type": "subpage"
+      },
+      {
+        "title": "Welcome | Playwright",
+        "description": "Welcome to the Playwright Community. We are so glad to have you here. In our community section take a look at our videos section to see videos on conference talks, live streams, feature videos and release videos.",
+        "sections": [
+          {
+            "heading": "Ambassadors​",
+            "content": "Check out our Ambassador page to the see the awesome people creating Playwright content and sharing it with the community."
+          },
+          {
+            "heading": "GitHub​",
+            "content": "We love stars so make sure you star us on GitHub . Please create an issue for the following: Bug Reports Feature Requests Report Regression Report a security vulnerability"
+          },
+          {
+            "heading": "Contributing​",
+            "content": "Check out our contributing guide if you would like to contribute to Playwright."
+          },
+          {
+            "heading": "Community Discord​",
+            "content": "Join our community Discord Server to connect with other developers using Playwright, ask questions in our 'help-playwright' forum, share your articles and videos and join live events on the Playwright stage."
+          },
+          {
+            "heading": "Community LinkedIn​",
+            "content": "Join our community on LinkedIn to connect with other developers and hear the latest news about Playwright."
+          },
+          {
+            "heading": "Stack Overflow​",
+            "content": "Read through the existing questions tagged with playwright or ask your own !"
+          },
+          {
+            "heading": "YouTube​",
+            "content": "Check out our YouTube channel for getting started series, feature videos and new releases."
+          },
+          {
+            "heading": "Blog​",
+            "content": "Follow our Blog on dev.to for official posts on Playwright."
+          },
+          {
+            "heading": "News​",
+            "content": "For the latest news about Playwright, follow @playwrightweb on Twitter ."
+          },
+          {
+            "heading": "Playwright Training​",
+            "content": "Learn how to Build Your first end-to-end test with Playwright on Microsoft Learn."
+          }
+        ],
+        "content": "On this page Welcome to the Playwright Community. We are so glad to have you here. In our community section take a look at our videos section to see videos on conference talks , live streams , feature videos and release videos . Ambassadors ​ Check out our Ambassador page to the see the awesome people creating Playwright content and sharing it with the community. GitHub ​ We love stars so make sure you star us on GitHub . Please create an issue for the following: Bug Reports Feature Requests Report Regression Report a security vulnerability Contributing ​ Check out our contributing guide if you would like to contribute to Playwright. Community Discord ​ Join our community Discord Server to connect with other developers using Playwright, ask questions in our 'help-playwright' forum, share your articles and videos and join live events on the Playwright stage. Community LinkedIn ​ Join our community on LinkedIn to connect with other developers and hear the latest news about Playwright. Stack Overflow ​ Read through the existing questions tagged with playwright or ask your own ! YouTube ​ Check out our YouTube channel for getting started series, feature videos and new releases. Blog ​ Follow our Blog on dev.to for official posts on Playwright. News ​ For the latest news about Playwright, follow @playwrightweb on Twitter . Playwright Training ​ Learn how to Build Your first end-to-end test with Playwright on Microsoft Learn. Ambassadors GitHub Contributing Community Discord Community LinkedIn Stack Overflow YouTube Blog News Playwright Training",
+        "url": "https://playwright.dev/community/welcome",
+        "page_type": "subpage"
+      },
+      {
+        "title": "Test generator | Playwright",
+        "description": "Introduction",
+        "sections": [
+          {
+            "heading": "Introduction​",
+            "content": "Playwright comes with the ability to generate tests for you as you perform actions in the browser and is a great way to quickly get started with testing. Playwright will look at your page and figure out the best locator, prioritizing role, text and test id locators . If the generator finds multiple elements matching the locator, it will improve the locator to make it resilient that uniquely identify the target element."
+          },
+          {
+            "heading": "Generate tests in VS Code​",
+            "content": "Install the VS Code extension and generate tests directly from VS Code. The extension is available on the VS Code Marketplace . Check out our guide on getting started with VS Code ."
+          },
+          {
+            "heading": "Record a New Test​",
+            "content": "To record a test click on the Record new button from the Testing sidebar. This will create a test-1.spec.ts file as well as open up a browser window. In the browser go to the URL you wish to test and start clicking around to record your user actions. Playwright will record your actions and generate the test code directly in VS Code. You can also generate assertions by choosing one of the icons in the toolbar and then clicking on an element on the page to assert against. The following assertions can be generated: 'assert visibility' to assert that an element is visible 'assert text' to assert that an element contains specific text 'assert value' to assert that an element has a specific value Once you are done recording click the cancel button or close the browser window. You can then inspect your test-1.spec.ts file and manually improve it if needed."
+          },
+          {
+            "heading": "Record at Cursor​",
+            "content": "To record from a specific point in your test move your cursor to where you want to record more actions and then click the Record at cursor button from the Testing sidebar. If your browser window is not already open then first run the test with 'Show browser' checked and then click the Record at cursor button. In the browser window start performing the actions you want to record. In the test file in VS Code you will see your new generated actions added to your test at the cursor position."
+          },
+          {
+            "heading": "Generating locators​",
+            "content": "You can generate locators with the test generator. Click on the Pick locator button from the testing sidebar and then hover over elements in the browser window to see the locator highlighted underneath each element. Click the element you require and it will now show up in the Pick locator box in VS Code. Press Enter on your keyboard to copy the locator into the clipboard and then paste anywhere in your code. Or press 'escape' if you want to cancel."
+          },
+          {
+            "heading": "Generate tests with the Playwright Inspector​",
+            "content": "When running the codegen command two windows will be opened, a browser window where you interact with the website you wish to test and the Playwright Inspector window where you can record your tests and then copy them into your editor."
+          },
+          {
+            "heading": "Running Codegen​",
+            "content": "Use the codegen command to run the test generator followed by the URL of the website you want to generate tests for. The URL is optional and you can always run the command without it and then add the URL directly into the browser window instead. npx playwright codegen demo.playwright.dev/todomvc"
+          },
+          {
+            "heading": "Recording a test​",
+            "content": "Run the codegen command and perform actions in the browser window. Playwright will generate the code for the user interactions which you can see in the Playwright Inspector window. Once you have finished recording your test stop the recording and press the copy button to copy your generated test into your editor. With the test generator you can record: Actions like click or fill by simply interacting with the page Assertions by clicking on one of the icons in the toolbar and then clicking on an element on the page to assert against. You can choose: 'assert visibility' to assert that an element is visible 'assert text' to assert that an element contains specific text 'assert value' to assert that an element has a specific value When you have finished interacting with the page, press the record button to stop the recording and use the copy button to copy the generated code to your editor. Use the clear button to clear the code to start recording again. Once finished, close the Playwright"
+          },
+          {
+            "heading": "Generating locators​",
+            "content": "You can generate locators with the test generator. Press the 'Record' button to stop the recording and the 'Pick Locator' button will appear. Click on the 'Pick Locator' button and then hover over elements in the browser window to see the locator highlighted underneath each element. To choose a locator, click on the element you would like to locate and the code for that locator will appear in the field next to the Pick Locator button. You can then edit the locator in this field to fine tune it or use the copy button to copy it and paste it into your code."
+          },
+          {
+            "heading": "Emulation​",
+            "content": "You can use the test generator to generate tests using emulation so as to generate a test for a specific viewport, device, color scheme, as well as emulate the geolocation, language or timezone. The test generator can also generate a test while preserving authenticated state."
+          }
+        ],
+        "content": "On this page Introduction ​ Playwright comes with the ability to generate tests for you as you perform actions in the browser and is a great way to quickly get started with testing. Playwright will look at your page and figure out the best locator, prioritizing role, text and test id locators . If the generator finds multiple elements matching the locator, it will improve the locator to make it resilient that uniquely identify the target element. Generate tests in VS Code ​ Install the VS Code extension and generate tests directly from VS Code. The extension is available on the VS Code Marketplace . Check out our guide on getting started with VS Code . Record a New Test ​ To record a test click on the Record new button from the Testing sidebar. This will create a test-1.spec.ts file as well as open up a browser window. In the browser go to the URL you wish to test and start clicking around to record your user actions. Playwright will record your actions and generate the test code directly in VS Code. You can also generate assertions by choosing one of the icons in the toolbar and then clicking on an element on the page to assert against. The following assertions can be generated: 'assert visibility' to assert that an element is visible 'assert text' to assert that an element contains specific text 'assert value' to assert that an element has a specific value Once you are done recording click the cancel button or close the browser window. You can then inspect your test-1.spec.ts file and manually improve it if needed. Record at Cursor ​ To record from a specific point in your test move your cursor to where you want to record more actions and then click the Record at cursor button from the Testing sidebar. If your browser window is not already open then first run the test with 'Show browser' checked and then click the Record at cursor button. In the browser window start performing the actions you want to record. In the test file in VS Code you will see your new generated actions added to your test at the cursor position. Generating locators ​ You can generate locators with the test generator. Click on the Pick locator button from the testing sidebar and then hover over elements in the browser window to see the locator highlighted underneath each element. Click the element you require and it will now show up in the Pick locator box in VS Code. Press Enter on your keyboard to copy the locator into the clipboard and then paste anywhere in your code. Or press 'escape' if you want to cancel. Generate tests with the Playwright Inspector ​ When running the codegen command two windows will be opened, a browser window where you interact with the website you wish to test and the Playwright Inspector window where you can record your tests and then copy them into your editor. Running Codegen ​ Use the codegen command to run the test generator followed by the URL of the website you want to generate tests for. The URL is optional and you can always run the comma",
+        "url": "https://playwright.dev/docs/codegen",
+        "page_type": "subpage"
+      },
+      {
+        "title": "Debugging Tests | Playwright",
+        "description": "VS Code debugger",
+        "sections": [
+          {
+            "heading": "VS Code debugger​",
+            "content": "We recommend using the VS Code Extension for debugging for a better developer experience. With the VS Code extension you can debug your tests right in VS Code, see error messages, set breakpoints and step through your tests."
+          },
+          {
+            "heading": "Error Messages​",
+            "content": "If your test fails VS Code will show you error messages right in the editor showing what was expected, what was received as well as a complete call log."
+          },
+          {
+            "heading": "Live Debugging​",
+            "content": "You can debug your test live in VS Code. After running a test with the Show Browser option checked, click on any of the locators in VS Code and it will be highlighted in the Browser window. Playwright will also show you if there are multiple matches. You can also edit the locators in VS Code and Playwright will show you the changes live in the browser window."
+          },
+          {
+            "heading": "Picking a Locator​",
+            "content": "Pick a locator and copy it into your test file by clicking the Pick locator button form the testing sidebar. Then in the browser click the element you require and it will now show up in the Pick locator box in VS Code. Press 'enter' on your keyboard to copy the locator into the clipboard and then paste anywhere in your code. Or press 'escape' if you want to cancel. Playwright will look at your page and figure out the best locator, prioritizing role, text and test id locators . If Playwright finds multiple elements matching the locator, it will improve the locator to make it resilient and uniquely identify the target element, so you don't have to worry about failing tests due to locators."
+          },
+          {
+            "heading": "Run in Debug Mode​",
+            "content": "To set a breakpoint click next to the line number where you want the breakpoint to be until a red dot appears. Run the tests in debug mode by right clicking on the line next to the test you want to run. A browser window will open and the test will run and pause at where the breakpoint is set. You can step through the tests, pause the test and rerun the tests from the menu in VS Code."
+          },
+          {
+            "heading": "Debug Tests Using Chrome DevTools​",
+            "content": "Instead of using Debug Test , choose Run Test in VS Code. With Show Browser enabled, the browser session is reused, letting you open Chrome DevTools for continuous debugging of your tests and the web application."
+          },
+          {
+            "heading": "Debug in different Browsers​",
+            "content": "By default, debugging is done using the Chromium profile. You can debug your tests on different browsers by right clicking on the debug icon in the testing sidebar and clicking on the 'Select Default Profile' option from the dropdown. Then choose the test profile you would like to use for debugging your tests. Each time you run your test in debug mode it will use the profile you selected. You can run tests in debug mode by right clicking the line number where your test is and selecting 'Debug Test' from the menu. To learn more about debugging, see Debugging in Visual Studio Code ."
+          },
+          {
+            "heading": "Playwright Inspector​",
+            "content": "The Playwright Inspector is a GUI tool to help you debug your Playwright tests. It allows you to step through your tests, live edit locators, pick locators and see actionability logs."
+          },
+          {
+            "heading": "Run in debug mode​",
+            "content": "Run your tests with the --debug flag to open the inspector. This configures Playwright for debugging and opens the inspector. Additional useful defaults are configured when --debug is used: Browsers launch in headed mode Default timeout is set to 0 (= no timeout) Debug all tests on all browsers ​ To debug all tests run the test command with the --debug flag. This will run tests one by one, and open the inspector and a browser window for each test. npx playwright test --debug Debug one test on all browsers ​ To debug one test on a specific line, run the test command followed by the name of the test file and the line number of the test you want to debug, followed by the --debug flag. This will run a single test in each browser configured in your playwright.config and open the inspector. npx playwright test example.spec.ts:10 --debug Debug on a specific browser ​ In Playwright you can configure projects in your playwright.config . Once configured you can then debug your tests on a specifi"
+          },
+          {
+            "heading": "Stepping through your tests​",
+            "content": "You can play, pause or step through each action of your test using the toolbar at the top of the Inspector. You can see the current action highlighted in the test code, and matching elements highlighted in the browser window."
+          }
+        ],
+        "content": "On this page VS Code debugger ​ We recommend using the VS Code Extension for debugging for a better developer experience. With the VS Code extension you can debug your tests right in VS Code, see error messages, set breakpoints and step through your tests. Error Messages ​ If your test fails VS Code will show you error messages right in the editor showing what was expected, what was received as well as a complete call log. Live Debugging ​ You can debug your test live in VS Code. After running a test with the Show Browser option checked, click on any of the locators in VS Code and it will be highlighted in the Browser window. Playwright will also show you if there are multiple matches. You can also edit the locators in VS Code and Playwright will show you the changes live in the browser window. Picking a Locator ​ Pick a locator and copy it into your test file by clicking the Pick locator button form the testing sidebar. Then in the browser click the element you require and it will now show up in the Pick locator box in VS Code. Press 'enter' on your keyboard to copy the locator into the clipboard and then paste anywhere in your code. Or press 'escape' if you want to cancel. Playwright will look at your page and figure out the best locator, prioritizing role, text and test id locators . If Playwright finds multiple elements matching the locator, it will improve the locator to make it resilient and uniquely identify the target element, so you don't have to worry about failing tests due to locators. Run in Debug Mode ​ To set a breakpoint click next to the line number where you want the breakpoint to be until a red dot appears. Run the tests in debug mode by right clicking on the line next to the test you want to run. A browser window will open and the test will run and pause at where the breakpoint is set. You can step through the tests, pause the test and rerun the tests from the menu in VS Code. Debug Tests Using Chrome DevTools ​ Instead of using Debug Test , choose Run Test in VS Code. With Show Browser enabled, the browser session is reused, letting you open Chrome DevTools for continuous debugging of your tests and the web application. Debug in different Browsers ​ By default, debugging is done using the Chromium profile. You can debug your tests on different browsers by right clicking on the debug icon in the testing sidebar and clicking on the 'Select Default Profile' option from the dropdown. Then choose the test profile you would like to use for debugging your tests. Each time you run your test in debug mode it will use the profile you selected. You can run tests in debug mode by right clicking the line number where your test is and selecting 'Debug Test' from the menu. To learn more about debugging, see Debugging in Visual Studio Code . Playwright Inspector ​ The Playwright Inspector is a GUI tool to help you debug your Playwright tests. It allows you to step through your tests, live edit locators, pick locators and see actionability lo",
+        "url": "https://playwright.dev/docs/debug",
+        "page_type": "subpage"
+      },
+      {
+        "title": "Trace viewer | Playwright",
+        "description": "Introduction",
+        "sections": [
+          {
+            "heading": "Introduction​",
+            "content": "Playwright Trace Viewer is a GUI tool that lets you explore recorded Playwright traces of your tests, meaning you can go back and forward through each action of your test and visually see what was happening during each action. How to record a trace How to open the HTML report How to open and view the trace"
+          },
+          {
+            "heading": "Recording a Trace​",
+            "content": "By default the playwright.config file contains the configuration needed to create a trace.zip file for each test. Traces are setup to run on-first-retry , meaning they run on the first retry of a failed test. Also retries are set to 2 when running on CI and 0 locally. This means the traces are recorded on the first retry of a failed test but not on the first run and not on the second retry. playwright.config.ts import { defineConfig } from '@playwright/test' ; export default defineConfig ( { retries : process . env . CI ? 2 : 0 , use : { trace : 'on-first-retry' , } , } ) ; To learn more about available options to record a trace check out our detailed guide on Trace Viewer . Traces are normally run in a Continuous Integration (CI) environment, because locally you can use UI Mode for developing and debugging tests. However, if you want to run traces locally without using UI Mode , you can force tracing to be on with --trace on . npx playwright test --trace on"
+          },
+          {
+            "heading": "Opening the HTML report​",
+            "content": "The HTML report shows you a report of all your tests that have been run and on which browsers as well as how long they took. Tests can be filtered by passed tests, failed, flaky, or skipped tests. You can also search for a particular test. Clicking on a test opens the detailed view where you can see more information on your tests such as the errors, the test steps, and the trace. npx playwright show-report"
+          },
+          {
+            "heading": "Opening the trace​",
+            "content": "In the HTML report, click on the trace icon next to the test file name to directly open the trace for the required test. You can also click to open the detailed view of the test and scroll down to the 'Traces' tab and open the trace by clicking on the trace screenshot. To learn more about reporters, check out our detailed guide on reporters including the HTML Reporter ."
+          },
+          {
+            "heading": "Viewing the trace​",
+            "content": "View traces of your test by clicking through each action or hovering using the timeline and see the state of the page before and after the action. Inspect the log, source and network, errors, and console during each step of the test. The trace viewer creates a DOM snapshot so you can fully interact with it and open the browser DevTools to inspect the HTML, CSS, etc. To learn more about traces, check out our detailed guide on Trace Viewer ."
+          },
+          {
+            "heading": "What's next​",
+            "content": "Run tests on CI with GitHub Actions Learn more about Trace Viewer"
+          }
+        ],
+        "content": "On this page Introduction ​ Playwright Trace Viewer is a GUI tool that lets you explore recorded Playwright traces of your tests, meaning you can go back and forward through each action of your test and visually see what was happening during each action. You will learn How to record a trace How to open the HTML report How to open and view the trace Recording a Trace ​ By default the playwright.config file contains the configuration needed to create a trace.zip file for each test. Traces are setup to run on-first-retry , meaning they run on the first retry of a failed test. Also retries are set to 2 when running on CI and 0 locally. This means the traces are recorded on the first retry of a failed test but not on the first run and not on the second retry. playwright.config.ts import { defineConfig } from '@playwright/test' ; export default defineConfig ( { retries : process . env . CI ? 2 : 0 , use : { trace : 'on-first-retry' , } , } ) ; To learn more about available options to record a trace check out our detailed guide on Trace Viewer . Traces are normally run in a Continuous Integration (CI) environment, because locally you can use UI Mode for developing and debugging tests. However, if you want to run traces locally without using UI Mode , you can force tracing to be on with --trace on . npx playwright test --trace on Opening the HTML report ​ The HTML report shows you a report of all your tests that have been run and on which browsers as well as how long they took. Tests can be filtered by passed tests, failed, flaky, or skipped tests. You can also search for a particular test. Clicking on a test opens the detailed view where you can see more information on your tests such as the errors, the test steps, and the trace. npx playwright show-report Opening the trace ​ In the HTML report, click on the trace icon next to the test file name to directly open the trace for the required test. You can also click to open the detailed view of the test and scroll down to the 'Traces' tab and open the trace by clicking on the trace screenshot. To learn more about reporters, check out our detailed guide on reporters including the HTML Reporter . Viewing the trace ​ View traces of your test by clicking through each action or hovering using the timeline and see the state of the page before and after the action. Inspect the log, source and network, errors, and console during each step of the test. The trace viewer creates a DOM snapshot so you can fully interact with it and open the browser DevTools to inspect the HTML, CSS, etc. To learn more about traces, check out our detailed guide on Trace Viewer . What's next ​ Run tests on CI with GitHub Actions Learn more about Trace Viewer Introduction Recording a Trace Opening the HTML report Opening the trace Viewing the trace What's next",
+        "url": "https://playwright.dev/docs/trace-viewer-intro",
+        "page_type": "subpage"
+      },
+      {
+        "title": "Learn Videos | Playwright",
+        "description": "Check out the latest videos for learning Playwright",
+        "sections": [
+          {
+            "heading": "Learn Videos",
+            "content": "Check out the latest videos for learning Playwright"
+          }
+        ],
+        "content": "Learn Videos Check out the latest videos for learning Playwright Playwright Testing Agents: under the hood Playwright for Beginners: Install and run tests Getting started with Playwright in VS Code Handling Visibility in Playwright: getByText vs. getByRole How to trigger flaky Playwright tests locally after they fail on CI Playwright Assertions: Avoid Race Conditions with This Simple Fix! Getting started with ARIA Snapshots How to test dynamic content in Playwright with API mocking How to Run Tests in Playwright with the VS Code Extension How to Generate Tests in playwright with the VS Code Extension Get Started with end-to-end testing: Playwright. Introduction Get Started with end-to-end testing: Playwright. Getting Started Get Started with end-to-end testing: Playwright. Running Tests Get Started with end-to-end testing: Playwright. Writing Tests Get Started with end-to-end testing: Playwright. Debugging Tests Get Started with end-to-end testing: Playwright. Running Tests on CI",
+        "url": "https://playwright.dev/community/learn-videos",
+        "page_type": "subpage"
+      }
+    ]
+  },
+  "secondary_content": {
+    "source": "web_search",
+    "reliability": "medium",
+    "searches": [
+      {
+        "index": 1,
+        "result": "Playwright is an open-source framework for end-to-end testing of modern web applications, supporting multiple browsers and languages. As of December 2025, Playwright is free to use, with no paid plans or subscription fees. The official website provides comprehensive documentation, tutorials, and community resources to assist users in leveraging Playwright for their testing needs.  "
+      },
+      {
+        "index": 2,
+        "result": "Playwright offers several avenues for support and community engagement:\n\n- **GitHub Issues**: For reporting bugs, requesting features, or addressing security vulnerabilities, users can create issues on Playwright's GitHub repository. ([playwright.dev](https://playwright.dev/dotnet/community/welcome?utm_source=openai))\n\n- **Community Discord Server**: A platform for connecting with other developers, seeking assistance, sharing content, and participating in live events. ([playwright.dev](https://playwright.dev/dotnet/community/welcome?utm_source=openai))\n\n- **Stack Overflow**: Users can ask questions or browse existing ones tagged with 'playwright' to find solutions. ([playwright.dev](https://playwright.dev/dotnet/community/welcome?utm_source=openai))\n\n- **LinkedIn**: A community page to connect with other developers and stay updated on Playwright news. ([playwright.dev](https://playwright.dev/dotnet/community/welcome?utm_source=openai))\n\n- **YouTube**: Official channel featuring tutoria"
+      },
+      {
+        "index": 3,
+        "result": "Playwright is a robust framework for end-to-end testing of modern web applications, supporting all major browsers—Chromium, Firefox, and WebKit—across platforms like Windows, Linux, and macOS. It offers cross-language support, enabling developers to write tests in TypeScript, JavaScript, Python, .NET, and Java. Key features include auto-waiting for elements to be actionable, web-first assertions, and full test isolation through browser contexts, ensuring reliable and efficient test execution. \n\nPlaywright's versatility is evident in its diverse use cases:\n\n- **Accessibility Testing**: By integrating with the `@axe-core/playwright` package, Playwright can identify accessibility issues such as poor color contrast, unlabeled UI controls, and duplicate IDs, enhancing web accessibility. ([playwright.dev](https://playwright.dev/docs/next/accessibility-testing?utm_source=openai))\n\n- **Mocking Browser APIs**: Developers can simulate various browser behaviors, like battery status, using Playwri"
+      },
+      {
+        "index": 4,
+        "result": "Playwright is a browser automation library supporting multiple programming languages: JavaScript, TypeScript, Python, Java, and .NET. ([playwright.dev](https://playwright.dev/docs/languages?utm_source=openai))\n\n**JavaScript/TypeScript**: Install via npm:\n\n\n```bash\nnpm init playwright@latest\n```\n\n\nThis command sets up a new project with Playwright, including browser binaries. ([playwright.dev](https://playwright.dev/docs/next/intro?utm_source=openai))\n\n**Python**: Install using pip:\n\n\n```bash\npip install playwright\n```\n\n\nAfter installation, run `playwright install` to download necessary browser binaries. ([playwright.dev](https://playwright.dev/docs/next/intro?utm_source=openai))\n\n**Java**: Add Playwright to your project dependencies. Refer to the [Playwright for Java GitHub repository](https://github.com/microsoft/playwright-java) for detailed instructions. ([playwright.dev](https://playwright.dev/docs/languages?utm_source=openai))\n\n**.NET**: Install Playwright via NuGet:\n\n\n```bash\ndot"
+      }
+    ]
+  }
+}
