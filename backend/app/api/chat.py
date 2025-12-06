@@ -2,6 +2,11 @@ from fastapi import APIRouter, HTTPException
 from openai import OpenAI
 
 from ..models.chat import ChatRequest, ChatResponse, ChatMessage
+from ..services.metrics_logger import (
+    log_chat_answer,
+    save_chat_answer_to_supabase,
+    metrics_enabled,
+)
 
 router = APIRouter()
 
@@ -22,6 +27,28 @@ async def chat(req: ChatRequest):
             messages=messages,
         )
         answer = resp.choices[0].message.content or ""
+
+        if metrics_enabled():
+            provenance = "primary_plus_secondary" if "SECONDARY SOURCE" in req.system_prompt else "primary_only"
+            try:
+                # Best-effort file log
+                log_chat_answer(
+                    question=req.messages[-1].content if req.messages else "",
+                    answer=answer,
+                    provenance=provenance,
+                    user=None,
+                )
+                # Best-effort Supabase log
+                save_chat_answer_to_supabase(
+                    question=req.messages[-1].content if req.messages else "",
+                    answer=answer,
+                    system_prompt=req.system_prompt,
+                    user_id=None,
+                    url=None,
+                )
+            except Exception as log_exc:
+                print(f"⚠️ Metrics logging skipped: {log_exc}")
+
         return ChatResponse(message=ChatMessage(role="assistant", content=answer))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))

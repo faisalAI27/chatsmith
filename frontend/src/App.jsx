@@ -27,7 +27,7 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [status, setStatus] = useState("");
   const [forceRefresh, setForceRefresh] = useState(false);
-  const [urlValue, setUrlValue] = useState("");
+  const [urlValue, setUrlValue] = useState("https://example.com");
   const [jobResult, setJobResult] = useState(null);
   const [systemPrompt, setSystemPrompt] = useState("");
   const [siteName, setSiteName] = useState("Bot");
@@ -41,6 +41,7 @@ export default function App() {
   const [resetOtpEntered, setResetOtpEntered] = useState(false);
   const [resetOtpValue, setResetOtpValue] = useState("");
   const [isRunning, setIsRunning] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
   const resetEmailRef = useRef(null);
   const resetOtpRef = useRef(null);
   const resetNewPassRef = useRef(null);
@@ -115,6 +116,8 @@ export default function App() {
   };
 
   const handleLogin = async () => {
+    if (isAuthLoading) return;
+    setIsAuthLoading(true);
     const email = loginEmailRef.current?.value?.trim() || "";
     const password = loginPassRef.current?.value || "";
     setStatus("Logging in...");
@@ -124,13 +127,15 @@ export default function App() {
     });
     if (error) {
       setStatus(`Login failed: ${error.message}`);
+      setIsAuthLoading(false);
     } else {
+      setView("app"); // jump to app immediately on success
       setSession(data.session);
       setEmailDisplay(data.session?.user?.email || email);
       const fn = data.session?.user?.user_metadata?.first_name;
       setFirstNameDisplay(fn || firstNameDisplay || (email ? email.split("@")[0] : ""));
       setStatus("Logged in.");
-      setView("app");
+      setIsAuthLoading(false);
     }
   };
 
@@ -229,7 +234,7 @@ export default function App() {
   };
 
   const runJob = async () => {
-    const targetUrl = urlInputRef.current?.value?.trim() || defaultUrl;
+    const targetUrl = (urlInputRef.current?.value || "").trim() || defaultUrl;
     setIsRunning(true);
     setStatus("Submitting job...");
     setJobResult(null);
@@ -305,7 +310,9 @@ export default function App() {
         ref={loginPassRef}
         defaultValue=""
       />
-      <button onClick={handleLogin}>Log In</button>
+      <button onClick={handleLogin} disabled={isAuthLoading} className={isAuthLoading ? "loading" : ""}>
+        {isAuthLoading ? "Logging in..." : "Log In"}
+      </button>
       <p className="link" onClick={() => setView("signup")}>
         Don’t have an account? Sign up
       </p>
@@ -396,8 +403,11 @@ export default function App() {
         <label className="label">Website URL</label>
         <input
           placeholder="https://example.com"
-          value={urlValue}
+          defaultValue={urlValue}
           ref={urlInputRef}
+          autoCorrect="off"
+          autoCapitalize="none"
+          spellCheck={false}
           onChange={(e) => setUrlValue(e.target.value)}
         />
         <label className="checkbox">

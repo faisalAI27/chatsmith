@@ -4,6 +4,8 @@ import asyncio
 
 from ..models.jobs import JobCreate, JobStatus
 from ..services import scrape_pipeline
+from ..services.metrics_logger import save_job_metrics_to_supabase
+from ..services.scrape_pipeline import ENABLE_METRICS
 
 router = APIRouter()
 
@@ -29,6 +31,16 @@ async def run_job(body: JobCreate) -> JobStatus:
             "tcr_seconds": stats.get("tcr_seconds", 0.0),
             "cache_hit": bool(stats.get("cache_hit", False)),
         }
+        if ENABLE_METRICS:
+            try:
+                save_job_metrics_to_supabase(
+                    url=str(body.url),
+                    stats=stats,
+                    user_id=None,  # user id not available in this dev endpoint
+                )
+            except Exception as exc:
+                print(f"⚠️ Metrics logging skipped: {exc}")
+
         return JobStatus(
             job_id="dev-inline",
             status="completed",

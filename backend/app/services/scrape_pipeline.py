@@ -5,6 +5,7 @@ import hashlib
 import re
 import ssl
 import time
+from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Tuple
 from urllib.parse import urljoin, urlparse
@@ -19,18 +20,23 @@ from pydantic import BaseModel, Field
 from supabase import Client, create_client
 from agents import Agent, WebSearchTool, Runner
 from agents.model_settings import ModelSettings
-from .metrics_logger import log_chat_answer
+from .metrics_logger import (
+    log_chat_answer,
+    save_chat_answer_to_supabase,
+)
 
 # Initialize
+# Knowledge base directory (consistent absolute path to avoid cwd issues)
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+KNOWLEDGE_DIR = PROJECT_ROOT / "knowledge_files"
+KNOWLEDGE_DIR.mkdir(parents=True, exist_ok=True)
+
 load_dotenv(override=True)
 client = OpenAI()
-ENABLE_METRICS = os.getenv("ENABLE_METRICS_LOGGING", "false").lower() == "true"
+ENABLE_METRICS = (os.getenv("ENABLE_METRICS_LOGGING", "false") or "").strip().lower() == "true"
 
 # Create SSL context with certifi certificates (matches notebook behavior)
 SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
-
-# Create knowledge_files directory if it doesn't exist
-os.makedirs("knowledge_files", exist_ok=True)
 
 print("✅ Imports loaded")
 
@@ -731,27 +737,34 @@ def get_cache_path(url: str) -> str:
     """Get the cache file path for a given URL."""
     url_hash = hashlib.md5(url.encode()).hexdigest()[:12]
     domain = urlparse(url).netloc.replace("www.", "").replace(".", "_")
-    return f"knowledge_files/{domain}_{url_hash}.json"
+    return str(KNOWLEDGE_DIR / f"{domain}_{url_hash}.json")
 
 
 def is_cached(url: str) -> bool:
     """Check if knowledge for a URL is already cached."""
-    cache_path = get_cache_path(url)
-    return os.path.exists(cache_path)
+    cache_path = Path(get_cache_path(url))
+    if cache_path.exists():
+        return True
+    # Backward compatibility: check legacy relative path if different
+    legacy = Path("knowledge_files") / cache_path.name
+    return legacy.exists()
 
 
 def get_cached_knowledge(url: str) -> Dict | None:
     """Load cached knowledge if available. Returns None if not cached."""
-    cache_path = get_cache_path(url)
-    if os.path.exists(cache_path):
-        try:
-            with open(cache_path, 'r', encoding='utf-8') as f:
-                knowledge = json.load(f)
-            print(f"📂 Loaded from cache: {cache_path}")
-            return knowledge
-        except Exception as e:
-            print(f"⚠️ Cache read error: {e}")
-            return None
+    paths = [Path(get_cache_path(url))]
+    # Add legacy relative path as fallback
+    paths.append(Path("knowledge_files") / paths[0].name)
+    for cache_path in paths:
+        if cache_path.exists():
+            try:
+                with open(cache_path, 'r', encoding='utf-8') as f:
+                    knowledge = json.load(f)
+                print(f"📂 Loaded from cache: {cache_path}")
+                return knowledge
+            except Exception as e:
+                print(f"⚠️ Cache read error ({cache_path}): {e}")
+                continue
     return None
 
 
@@ -790,13 +803,14 @@ def create_knowledge_json(url: str, scraped_data: Dict, web_search_results: List
 
 def save_knowledge_json(knowledge: Dict, url: str) -> str:
     """Save knowledge JSON to file. Returns filepath."""
-    filepath = get_cache_path(url)
+    filepath = Path(get_cache_path(url))
+    filepath.parent.mkdir(parents=True, exist_ok=True)
     
     with open(filepath, 'w', encoding='utf-8') as f:
         json.dump(knowledge, f, indent=2, ensure_ascii=False)
     
     print(f"💾 Knowledge saved to: {filepath}")
-    return filepath
+    return str(filepath)
 
 
 def load_knowledge_json(filepath: str) -> Dict:
@@ -1566,6 +1580,16 @@ def chat_fn(message, history, system_prompt, name, user=None):
             provenance=provenance,
             user=user_email,
         )
+        try:
+            save_chat_answer_to_supabase(
+                question=message,
+                answer=answer,
+                system_prompt=system_prompt,
+                user_id=user_email,
+                url=None,  # URL not available in this handler
+            )
+        except Exception as exc:
+            print(f"⚠️ Supabase chat metrics skipped: {exc}")
 
     # Return in Gradio 6.x format
     return "", history + [
