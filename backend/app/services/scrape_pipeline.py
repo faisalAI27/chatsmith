@@ -410,6 +410,15 @@ async def scrape_website(url: str) -> Dict:
         # Step 1: Fetch homepage with retry
         print("  📄 Fetching homepage...")
         _, homepage_html, homepage_error = await fetch_page_with_retry(session, url)
+
+        # Fallback: if HTTPS failed, try HTTP (some sites block/redirect HTTPS)
+        if not homepage_html and original_url.startswith("https://"):
+            fallback_url = "http://" + original_url[len("https://"):]
+            print(f"  🔁 HTTPS fetch failed, retrying with HTTP: {fallback_url}")
+            _, homepage_html, homepage_error = await fetch_page_with_retry(session, fallback_url)
+            if homepage_html:
+                url = fallback_url.rstrip('/')
+                results["source_url"] = url
         
         if not homepage_html:
             error_msg = f"Failed to fetch homepage: {homepage_error}"

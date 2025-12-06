@@ -396,8 +396,9 @@ export default function App() {
         <label className="label">Website URL</label>
         <input
           placeholder="https://example.com"
-          defaultValue={defaultUrl}
+          value={urlValue}
           ref={urlInputRef}
+          onChange={(e) => setUrlValue(e.target.value)}
         />
         <label className="checkbox">
           <input type="checkbox" checked={forceRefresh} onChange={(e) => setForceRefresh(e.target.checked)} />
@@ -440,10 +441,6 @@ export default function App() {
                 />
                 <button onClick={sendChat}>Send</button>
                 <div className="status">{chatStatus}</div>
-                <details style={{ marginTop: 8 }}>
-                  <summary className="muted small">View system prompt</summary>
-                  <pre className="result" style={{ maxHeight: 160 }}>{systemPrompt}</pre>
-                </details>
               </>
             )}
           </>
