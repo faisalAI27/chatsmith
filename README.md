@@ -80,6 +80,9 @@ npm install
 npm run dev   # opens on http://localhost:5173
 ```
 
+### Optional metrics (feature-flagged)
+- Set `ENABLE_METRICS_LOGGING=true` in your environment to capture Time-to-Chatbot-Ready (TCR), cache hit flags, and chat Q/A JSONL logs (`metrics_logs/chat_answers.jsonl`). Disabled by default to avoid any impact on existing flows.
+
 ### Usage
 - Sign up (first/last/email/password) → OTP → auto-login.
 - Generate chatbot: paste URL, optional Force refresh → Run. A brief summary (pages scraped, web searches) shows, then the chatbot appears.

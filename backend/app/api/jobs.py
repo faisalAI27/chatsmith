@@ -26,6 +26,8 @@ async def run_job(body: JobCreate) -> JobStatus:
             "searches_run": stats.get("searches_run", 0),
             "pages_scraped": stats.get("pages_scraped", 0),
             "gaps_found": stats.get("gaps_found", 0),
+            "tcr_seconds": stats.get("tcr_seconds", 0.0),
+            "cache_hit": bool(stats.get("cache_hit", False)),
         }
         return JobStatus(
             job_id="dev-inline",

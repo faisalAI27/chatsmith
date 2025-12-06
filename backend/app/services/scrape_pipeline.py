@@ -4,6 +4,7 @@ import json
 import hashlib
 import re
 import ssl
+import time
 from datetime import datetime
 from typing import List, Dict, Tuple
 from urllib.parse import urljoin, urlparse
@@ -18,10 +19,12 @@ from pydantic import BaseModel, Field
 from supabase import Client, create_client
 from agents import Agent, WebSearchTool, Runner
 from agents.model_settings import ModelSettings
+from .metrics_logger import log_chat_answer
 
 # Initialize
 load_dotenv(override=True)
 client = OpenAI()
+ENABLE_METRICS = os.getenv("ENABLE_METRICS_LOGGING", "false").lower() == "true"
 
 # Create SSL context with certifi certificates (matches notebook behavior)
 SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
@@ -1284,7 +1287,8 @@ async def run_full_research_new(url: str, force_refresh: bool = False, progress=
     NEW workflow: Scrape first, then fill gaps with targeted searches.
     With caching support and improved error handling (Phase 3).
     """
-    stats = {"pages_scraped": 0, "searches_run": 0, "gaps_found": 0}
+    stats = {"pages_scraped": 0, "searches_run": 0, "gaps_found": 0, "cache_hit": False}
+    start_time = time.time() if ENABLE_METRICS else None
     errors = []  # Track errors for UI feedback
     
     # ===== Check Cache First =====
@@ -1293,6 +1297,7 @@ async def run_full_research_new(url: str, force_refresh: bool = False, progress=
         
         cached_knowledge = get_cached_knowledge(url)
         if cached_knowledge:
+            stats["cache_hit"] = True
             progress(0.9, desc="Preparing chatbot from cache...")
             
             # Extract name from cached data
@@ -1317,6 +1322,8 @@ RULES:
 
 === END ===
 """
+            if start_time is not None:
+                stats["tcr_seconds"] = time.time() - start_time
             progress(1.0, desc="Done (from cache)!")
             status_text = build_status_new(100, current_step=4, selected_name=raw_name, 
                                            finished=True, stats=stats, from_cache=True)
@@ -1324,7 +1331,7 @@ RULES:
             msg_update = gr.update(interactive=True, placeholder="Ask anything about the website...")
             send_btn_update = gr.update(interactive=True)
             
-            return status_text, system_prompt, raw_name, [], msg_update, send_btn_update
+            return status_text, system_prompt, raw_name, [], msg_update, send_btn_update, stats
     
     # ===== Step 1: Scrape Website (PRIMARY SOURCE) =====
     progress(0.05, desc="Scraping website...")
@@ -1463,6 +1470,8 @@ RULES:
 """
     
     progress(1.0, desc="Done!")
+    if start_time is not None:
+        stats["tcr_seconds"] = time.time() - start_time
     status_text = build_status_new(100, current_step=4, selected_name=raw_name, 
                                    finished=True, stats=stats, errors=errors)
     
@@ -1543,6 +1552,20 @@ def chat_fn(message, history, system_prompt, name, user=None):
     except Exception as e:
         print(f"❌ Chat error: {e}")
         answer = f"⚠️ Sorry, there was an error generating a response. Please try again.\n\nError: {str(e)[:100]}"
+
+    if ENABLE_METRICS:
+        provenance = "primary_plus_secondary" if system_prompt and "SECONDARY SOURCE" in system_prompt else "primary_only"
+        user_email = None
+        if isinstance(user, dict):
+            user_email = user.get("email")
+        else:
+            user_email = getattr(user, "email", None)
+        log_chat_answer(
+            question=message,
+            answer=answer,
+            provenance=provenance,
+            user=user_email,
+        )
 
     # Return in Gradio 6.x format
     return "", history + [

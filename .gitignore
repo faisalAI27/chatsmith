@@ -7,5 +7,6 @@ knowledge_files/
 backend/knowledge_files/
 frontend/node_modules/
 frontend/dist/
+metrics_logs/
 .vscode/
 .DS_Store
