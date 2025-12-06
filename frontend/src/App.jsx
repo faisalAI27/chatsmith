@@ -27,6 +27,7 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [status, setStatus] = useState("");
   const [forceRefresh, setForceRefresh] = useState(false);
+  const [urlValue, setUrlValue] = useState("");
   const [jobResult, setJobResult] = useState(null);
   const [systemPrompt, setSystemPrompt] = useState("");
   const [siteName, setSiteName] = useState("Bot");

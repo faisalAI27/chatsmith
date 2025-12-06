@@ -90,7 +90,11 @@ REQUEST_TIMEOUT = 15
 MAX_RETRIES = 3
 RETRY_DELAY = 1.0  # seconds between retries
 POLITE_DELAY = 0.5  # seconds between requests (rate limiting)
-USER_AGENT = "ChatSMITH/1.0 (Website-to-Chatbot Generator; +https://github.com/chatsmith)"
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/123.0.0.0 Safari/537.36"
+)
 
 # Cache for robots.txt to avoid re-fetching
 _robots_cache: Dict[str, set] = {}
