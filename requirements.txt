@@ -1,64 +1,27 @@
-# ChatSMITH - Website to Chatbot Generator
-# Requirements file - Updated December 2025
+# ChatSMITH - backend requirements (FastAPI + scraper + Supabase auth)
+# Updated: 2025-12-06 (pinned for reproducibility with current stack)
 
-# ============================================================
-# CORE DEPENDENCIES
-# ============================================================
+fastapi==0.123.10
+uvicorn[standard]==0.38.0
+python-dotenv==1.2.1
+# gradio 6.0.2 caps pydantic at 2.12.4
+pydantic==2.12.4
 
-# OpenAI SDK and Agents
-openai>=1.0.0
-openai-agents  # OpenAI Agents SDK for multi-agent orchestration
-# Alternative: Install from GitHub if PyPI version has issues:
-# git+https://github.com/openai/openai-agents-python.git
+# OpenAI + agent stack
+openai==2.9.0
+openai-agents==0.6.2
 
-# Data Models
-pydantic>=2.0.0
+# Supabase auth
+supabase==2.25.0
 
-# Environment Variables
-python-dotenv>=1.0.0
+# Scraping & parsing
+aiohttp==3.13.2
+certifi==2025.11.12
+beautifulsoup4==4.14.3
+lxml==6.0.2
 
-# ============================================================
-# WEB SCRAPING (Smart Website Scraper - Phase 1)
-# ============================================================
+# UI helpers (gradio callbacks used in pipeline)
+gradio==6.0.2
 
-# Async HTTP client for fast parallel scraping
-aiohttp>=3.9.0
-
-# SSL certificates (REQUIRED for Windows!)
-certifi>=2024.0.0
-
-# HTML parsing and content extraction
-beautifulsoup4>=4.12.0
-lxml>=5.0.0
-
-# ============================================================
-# USER INTERFACE
-# ============================================================
-
-# Gradio for web UI (6.x recommended)
-gradio>=4.0.0
-# Supabase authentication
-supabase>=2.4.0
-# FastAPI backend
-fastapi>=0.115.0
-uvicorn[standard]>=0.29.0
-
-# ============================================================
-# OPTIONAL DEPENDENCIES
-# ============================================================
-
-# Export to Word (uncomment if needed)
-# python-docx
-
-# Email functionality (uncomment if needed)
-# sendgrid
-
-# JS rendering for heavy websites (uncomment if needed)
-# Install browsers with: playwright install
-# playwright>=1.48
-
-# ============================================================
-# DEVELOPMENT & TESTING
-# ============================================================
-
-pytest>=8.0.0
+# Dev / testing
+pytest==9.0.1
