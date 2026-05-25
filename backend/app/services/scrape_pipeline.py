@@ -22,10 +22,12 @@ from agents import Agent, WebSearchTool, Runner
 from agents.model_settings import ModelSettings
 from .metrics_logger import log_chat_answer
 from .scraper_schema import (
+    convert_v2_page_to_legacy_page,
     ensure_v2_knowledge_shape,
     make_website_id,
     normalize_url_for_cache,
 )
+from .static_extractor import extract_static_page
 
 # Initialize
 # Official backend runtime cache directory. A legacy root-level knowledge_files/
@@ -232,79 +234,24 @@ async def fetch_page(session: aiohttp.ClientSession, url: str) -> Tuple[str, str
     return url, html
 
 
-def clean_html_content(html: str) -> Dict:
+def clean_html_content(
+    html: str,
+    page_url: str = "",
+    page_type: str = "other",
+    status_code: int = 200,
+    errors: List[str] | None = None,
+) -> Dict:
     """
     Clean HTML and extract meaningful content.
-    Returns structured data with title, description, sections, and clean text.
+    Returns a v2 page record with legacy-compatible title, sections, and content.
     """
-    if not html:
-        return {"title": "", "description": "", "sections": [], "content": ""}
-    
-    soup = BeautifulSoup(html, "lxml")
-    
-    # Remove unwanted elements
-    for element in soup.find_all(['script', 'style', 'nav', 'footer', 'header', 
-                                   'aside', 'noscript', 'iframe', 'svg', 'form']):
-        element.decompose()
-    
-    # Remove elements by common class/id patterns (ads, popups, etc.)
-    noise_patterns = ['cookie', 'popup', 'modal', 'advertisement', 'ad-', 'sidebar', 
-                      'newsletter', 'subscribe', 'social', 'share', 'comment']
-    for pattern in noise_patterns:
-        for element in soup.find_all(class_=lambda x: x and pattern in str(x).lower()):
-            element.decompose()
-        for element in soup.find_all(id=lambda x: x and pattern in str(x).lower()):
-            element.decompose()
-    
-    # Extract title
-    title = ""
-    if soup.title:
-        title = soup.title.get_text(strip=True)
-    elif soup.find('h1'):
-        title = soup.find('h1').get_text(strip=True)
-    
-    # Extract meta description
-    description = ""
-    meta_desc = soup.find('meta', attrs={'name': 'description'})
-    if meta_desc and meta_desc.get('content'):
-        description = meta_desc['content']
-    
-    # Extract sections based on headings
-    sections = []
-    for heading in soup.find_all(['h1', 'h2', 'h3']):
-        heading_text = heading.get_text(strip=True)
-        if not heading_text or len(heading_text) < 3:
-            continue
-        
-        # Get content after this heading until next heading
-        content_parts = []
-        for sibling in heading.find_next_siblings():
-            if sibling.name in ['h1', 'h2', 'h3']:
-                break
-            text = sibling.get_text(separator=' ', strip=True)
-            if text and len(text) > 20:
-                content_parts.append(text)
-        
-        if content_parts:
-            sections.append({
-                "heading": heading_text,
-                "content": " ".join(content_parts)[:1000]  # Limit section content
-            })
-    
-    # Extract main content as fallback
-    main_content = ""
-    main_element = soup.find('main') or soup.find('article') or soup.find('body')
-    if main_element:
-        main_content = main_element.get_text(separator=' ', strip=True)
-        # Clean up whitespace
-        main_content = re.sub(r'\s+', ' ', main_content)[:3000]  # Limit total content
-    
-    return {
-        "title": title,
-        "description": description,
-        "sections": sections[:10],  # Limit to 10 sections
-        "content": main_content
-    }
+    return extract_static_page(
+        html=html,
+        page_url=page_url,
+        page_type=page_type,
+        status_code=status_code,
+        errors=errors,
+    )
 
 
 def discover_key_pages(html: str, base_url: str) -> List[str]:
@@ -432,9 +379,7 @@ async def scrape_website(url: str) -> Dict:
             return results
         
         # Step 2: Clean and extract homepage content
-        homepage_data = clean_html_content(homepage_html)
-        homepage_data["url"] = url
-        homepage_data["page_type"] = "homepage"
+        homepage_data = clean_html_content(homepage_html, page_url=url, page_type="homepage")
         results["pages"].append(homepage_data)
         print(f"  ✅ Homepage: {homepage_data['title'][:50] if homepage_data['title'] else 'No title'}")
         
@@ -464,9 +409,7 @@ async def scrape_website(url: str) -> Dict:
                 
                 for page_url, page_html, error in page_results:
                     if page_html:
-                        page_data = clean_html_content(page_html)
-                        page_data["url"] = page_url
-                        page_data["page_type"] = "subpage"
+                        page_data = clean_html_content(page_html, page_url=page_url, page_type="subpage")
                         results["pages"].append(page_data)
                         print(f"    ✅ {page_url.split('/')[-1] or 'page'}: {page_data['title'][:30] if page_data['title'] else 'No title'}")
                     elif error:
@@ -501,8 +444,9 @@ def format_scraped_content_for_context(scraped_data: Dict) -> str:
     for page in scraped_data.get("pages", []):
         if page.get("title"):
             parts.append(f"## {page['title']}")
-        if page.get("url"):
-            parts.append(f"URL: {page['url']}")
+        page_url = page.get("page_url") or page.get("url")
+        if page_url:
+            parts.append(f"URL: {page_url}")
         if page.get("description"):
             parts.append(f"Description: {page['description']}")
         
@@ -793,6 +737,8 @@ def ensure_knowledge_metadata(knowledge: Dict, fallback_url: str = "") -> Dict:
 def create_knowledge_json(url: str, scraped_data: Dict, web_search_results: List = None, name: str = "") -> Dict:
     """Create a structured JSON knowledge base from all sources."""
     normalized_url = normalize_url_for_cache(url)
+    v2_pages = scraped_data.get("pages", [])
+    legacy_pages = [convert_v2_page_to_legacy_page(page) for page in v2_pages]
     knowledge = {
         "metadata": {
             "website_id": make_website_id(normalized_url),
@@ -807,8 +753,9 @@ def create_knowledge_json(url: str, scraped_data: Dict, web_search_results: List
         "primary_content": {
             "source": "website_scraping",
             "reliability": "high",
-            "pages": scraped_data.get("pages", [])
+            "pages": legacy_pages
         },
+        "pages": v2_pages,
         "secondary_content": {
             "source": "web_search",
             "reliability": "medium",
