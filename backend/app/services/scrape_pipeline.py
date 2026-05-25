@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Tuple
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, urlunparse
 
 import aiohttp
 import certifi
@@ -23,8 +23,8 @@ from agents.model_settings import ModelSettings
 from .metrics_logger import log_chat_answer
 
 # Initialize
-# Backend runtime writes cache files to backend/knowledge_files. The repository
-# root knowledge_files directory is still read as a legacy fallback below.
+# Official backend runtime cache directory. A legacy root-level knowledge_files/
+# directory may exist in old clones, but new runtime reads and writes stay here.
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 KNOWLEDGE_DIR = BACKEND_ROOT / "knowledge_files"
 KNOWLEDGE_DIR.mkdir(parents=True, exist_ok=True)
@@ -724,33 +724,83 @@ async def extract_name_from_text(text: str, url: str = "") -> str:
 # JSON KNOWLEDGE BASE - Storage & Caching
 # ============================================================
 
-def get_cache_path(url: str) -> str:
-    """Get the cache file path for a given URL."""
+def normalize_url_for_cache(url: str) -> str:
+    """Normalize a website URL into a stable cache identity."""
+    raw_url = (url or "").strip()
+    if not raw_url:
+        return ""
+
+    if not re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", raw_url):
+        raw_url = f"https://{raw_url}"
+
+    parsed = urlparse(raw_url)
+    scheme = (parsed.scheme or "https").lower()
+    if scheme in {"http", "https"}:
+        scheme = "https"
+
+    netloc = parsed.netloc.lower()
+    if netloc.endswith(":443"):
+        netloc = netloc[:-4]
+    elif netloc.endswith(":80"):
+        netloc = netloc[:-3]
+
+    path = parsed.path or ""
+    if path == "/":
+        path = ""
+    else:
+        path = path.rstrip("/")
+
+    return urlunparse((scheme, netloc, path, "", "", ""))
+
+
+def get_website_id(url: str) -> str:
+    """Return the stable website id used by JSON cache files and future stores."""
+    normalized_url = normalize_url_for_cache(url)
+    return hashlib.md5(normalized_url.encode("utf-8")).hexdigest()[:12]
+
+
+def _cache_domain_slug(normalized_url: str) -> str:
+    """Build a readable filename prefix from the normalized URL host."""
+    domain = urlparse(normalized_url).netloc.replace("www.", "")
+    slug = re.sub(r"[^a-z0-9]+", "_", domain.lower()).strip("_")
+    return slug or "website"
+
+
+def _legacy_cache_path(url: str) -> Path:
+    """Return the old exact-URL cache filename in the official cache directory."""
     url_hash = hashlib.md5(url.encode()).hexdigest()[:12]
     domain = urlparse(url).netloc.replace("www.", "").replace(".", "_")
-    return str(KNOWLEDGE_DIR / f"{domain}_{url_hash}.json")
+    return KNOWLEDGE_DIR / f"{domain}_{url_hash}.json"
+
+
+def _cache_candidate_paths(url: str) -> List[Path]:
+    """Return official-directory cache paths, newest normalized name first."""
+    primary = Path(get_cache_path(url))
+    legacy = _legacy_cache_path(url)
+    if legacy != primary:
+        return [primary, legacy]
+    return [primary]
+
+
+def get_cache_path(url: str) -> str:
+    """Get the cache file path for a given URL."""
+    normalized_url = normalize_url_for_cache(url)
+    website_id = get_website_id(normalized_url)
+    domain = _cache_domain_slug(normalized_url)
+    return str(KNOWLEDGE_DIR / f"{domain}_{website_id}.json")
 
 
 def is_cached(url: str) -> bool:
     """Check if knowledge for a URL is already cached."""
-    cache_path = Path(get_cache_path(url))
-    if cache_path.exists():
-        return True
-    # Backward compatibility: check legacy relative path if different
-    legacy = Path("knowledge_files") / cache_path.name
-    return legacy.exists()
+    return any(cache_path.exists() for cache_path in _cache_candidate_paths(url))
 
 
 def get_cached_knowledge(url: str) -> Dict | None:
     """Load cached knowledge if available. Returns None if not cached."""
-    paths = [Path(get_cache_path(url))]
-    # Add legacy relative path as fallback
-    paths.append(Path("knowledge_files") / paths[0].name)
-    for cache_path in paths:
+    for cache_path in _cache_candidate_paths(url):
         if cache_path.exists():
             try:
-                with open(cache_path, 'r', encoding='utf-8') as f:
-                    knowledge = json.load(f)
+                knowledge = load_knowledge_json(str(cache_path), fallback_url=url)
                 print(f"📂 Loaded from cache: {cache_path}")
                 return knowledge
             except Exception as e:
@@ -759,11 +809,34 @@ def get_cached_knowledge(url: str) -> Dict | None:
     return None
 
 
+def ensure_knowledge_metadata(knowledge: Dict, fallback_url: str = "") -> Dict:
+    """Backfill metadata fields needed by the normalized JSON cache format."""
+    if not isinstance(knowledge, dict):
+        raise ValueError("Knowledge JSON must be an object")
+
+    metadata = knowledge.setdefault("metadata", {})
+    if not isinstance(metadata, dict):
+        raise ValueError("Knowledge JSON metadata must be an object")
+
+    original_url = metadata.get("url") or fallback_url or ""
+    normalized_url = metadata.get("normalized_url") or normalize_url_for_cache(original_url)
+    website_id = metadata.get("website_id") or get_website_id(normalized_url)
+
+    if original_url and not metadata.get("url"):
+        metadata["url"] = original_url
+    metadata["normalized_url"] = normalized_url
+    metadata["website_id"] = website_id
+    return knowledge
+
+
 def create_knowledge_json(url: str, scraped_data: Dict, web_search_results: List = None, name: str = "") -> Dict:
     """Create a structured JSON knowledge base from all sources."""
+    normalized_url = normalize_url_for_cache(url)
     knowledge = {
         "metadata": {
+            "website_id": get_website_id(normalized_url),
             "url": url,
+            "normalized_url": normalized_url,
             "name": name,
             "created_at": datetime.now().isoformat(),
             "pages_scraped": scraped_data.get("total_pages", 0),
@@ -794,20 +867,30 @@ def create_knowledge_json(url: str, scraped_data: Dict, web_search_results: List
 
 def save_knowledge_json(knowledge: Dict, url: str) -> str:
     """Save knowledge JSON to file. Returns filepath."""
+    knowledge = ensure_knowledge_metadata(knowledge, fallback_url=url)
     filepath = Path(get_cache_path(url))
-    filepath.parent.mkdir(parents=True, exist_ok=True)
-    
-    with open(filepath, 'w', encoding='utf-8') as f:
-        json.dump(knowledge, f, indent=2, ensure_ascii=False)
+    try:
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(knowledge, f, indent=2, ensure_ascii=False)
+    except OSError as exc:
+        raise OSError(f"Could not save knowledge JSON to {filepath}: {exc}") from exc
     
     print(f"💾 Knowledge saved to: {filepath}")
     return str(filepath)
 
 
-def load_knowledge_json(filepath: str) -> Dict:
+def load_knowledge_json(filepath: str, fallback_url: str = "") -> Dict:
     """Load knowledge from a JSON file."""
-    with open(filepath, 'r', encoding='utf-8') as f:
-        return json.load(f)
+    path = Path(filepath)
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            knowledge = json.load(f)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid knowledge JSON at {path}: {exc}") from exc
+    except OSError as exc:
+        raise OSError(f"Could not read knowledge JSON at {path}: {exc}") from exc
+    return ensure_knowledge_metadata(knowledge, fallback_url=fallback_url)
 
 
 def knowledge_to_chatbot_context(knowledge: Dict) -> str:
