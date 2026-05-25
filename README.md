@@ -31,7 +31,7 @@ An intelligent AI system that automatically generates chatbots from any website 
    - Results marked as secondary source
 
 4. **Knowledge Storage System**
-   - JSON files saved to `knowledge_files/`
+   - JSON files saved to `backend/knowledge_files/`
    - URL-based caching (instant reload)
    - Source attribution (primary vs secondary)
 
@@ -90,7 +90,7 @@ npm run dev   # opens on http://localhost:5173
 ```
 backend/            # FastAPI app and pipeline copy
 frontend/           # Vite React UI (run, chat)
-knowledge_files/    # Cached knowledge JSONs (used by pipeline)
+backend/knowledge_files/ # Cached knowledge JSONs (used by backend pipeline)
 requirements.txt    # Backend dependencies
 README.md           # This file
 ```
