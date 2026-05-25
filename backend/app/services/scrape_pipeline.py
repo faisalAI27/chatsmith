@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Tuple
-from urllib.parse import urljoin, urlparse, urlunparse
+from urllib.parse import urljoin, urlparse
 
 import aiohttp
 import certifi
@@ -21,6 +21,11 @@ from pydantic import BaseModel, Field
 from agents import Agent, WebSearchTool, Runner
 from agents.model_settings import ModelSettings
 from .metrics_logger import log_chat_answer
+from .scraper_schema import (
+    ensure_v2_knowledge_shape,
+    make_website_id,
+    normalize_url_for_cache,
+)
 
 # Initialize
 # Official backend runtime cache directory. A legacy root-level knowledge_files/
@@ -724,39 +729,10 @@ async def extract_name_from_text(text: str, url: str = "") -> str:
 # JSON KNOWLEDGE BASE - Storage & Caching
 # ============================================================
 
-def normalize_url_for_cache(url: str) -> str:
-    """Normalize a website URL into a stable cache identity."""
-    raw_url = (url or "").strip()
-    if not raw_url:
-        return ""
-
-    if not re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", raw_url):
-        raw_url = f"https://{raw_url}"
-
-    parsed = urlparse(raw_url)
-    scheme = (parsed.scheme or "https").lower()
-    if scheme in {"http", "https"}:
-        scheme = "https"
-
-    netloc = parsed.netloc.lower()
-    if netloc.endswith(":443"):
-        netloc = netloc[:-4]
-    elif netloc.endswith(":80"):
-        netloc = netloc[:-3]
-
-    path = parsed.path or ""
-    if path == "/":
-        path = ""
-    else:
-        path = path.rstrip("/")
-
-    return urlunparse((scheme, netloc, path, "", "", ""))
-
-
 def get_website_id(url: str) -> str:
     """Return the stable website id used by JSON cache files and future stores."""
     normalized_url = normalize_url_for_cache(url)
-    return hashlib.md5(normalized_url.encode("utf-8")).hexdigest()[:12]
+    return make_website_id(normalized_url)
 
 
 def _cache_domain_slug(normalized_url: str) -> str:
@@ -811,22 +787,7 @@ def get_cached_knowledge(url: str) -> Dict | None:
 
 def ensure_knowledge_metadata(knowledge: Dict, fallback_url: str = "") -> Dict:
     """Backfill metadata fields needed by the normalized JSON cache format."""
-    if not isinstance(knowledge, dict):
-        raise ValueError("Knowledge JSON must be an object")
-
-    metadata = knowledge.setdefault("metadata", {})
-    if not isinstance(metadata, dict):
-        raise ValueError("Knowledge JSON metadata must be an object")
-
-    original_url = metadata.get("url") or fallback_url or ""
-    normalized_url = metadata.get("normalized_url") or normalize_url_for_cache(original_url)
-    website_id = metadata.get("website_id") or get_website_id(normalized_url)
-
-    if original_url and not metadata.get("url"):
-        metadata["url"] = original_url
-    metadata["normalized_url"] = normalized_url
-    metadata["website_id"] = website_id
-    return knowledge
+    return ensure_v2_knowledge_shape(knowledge, fallback_url=fallback_url)
 
 
 def create_knowledge_json(url: str, scraped_data: Dict, web_search_results: List = None, name: str = "") -> Dict:
@@ -834,11 +795,12 @@ def create_knowledge_json(url: str, scraped_data: Dict, web_search_results: List
     normalized_url = normalize_url_for_cache(url)
     knowledge = {
         "metadata": {
-            "website_id": get_website_id(normalized_url),
+            "website_id": make_website_id(normalized_url),
             "url": url,
             "normalized_url": normalized_url,
             "name": name,
             "created_at": datetime.now().isoformat(),
+            "scraping_version": "v2",
             "pages_scraped": scraped_data.get("total_pages", 0),
             "has_web_search_supplement": bool(web_search_results),
         },
@@ -862,7 +824,7 @@ def create_knowledge_json(url: str, scraped_data: Dict, web_search_results: List
                 "result": str(result)[:1000]
             })
     
-    return knowledge
+    return ensure_v2_knowledge_shape(knowledge, fallback_url=url)
 
 
 def save_knowledge_json(knowledge: Dict, url: str) -> str:
