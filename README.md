@@ -8,7 +8,7 @@ An intelligent AI system that automatically generates chatbots from any website 
 - **Intelligent Gap Detection** - Only runs web searches when necessary
 - **JSON Knowledge Caching** - Instant load for previously processed websites
 - **Polite Scraping** - Respects robots.txt, rate limiting, retry logic
-- **React UI + FastAPI** - Auth, progress, and chat
+- **React UI + FastAPI** - Progress and chat
 
 ## 🏗️ Architecture
 
@@ -74,8 +74,6 @@ Requires Node ^20.19.0 or >=22.12.0 for Vite 7.
 ```bash
 cd frontend
 cat > .env <<'EOF'
-VITE_SUPABASE_URL=https://your-project-id.supabase.co
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 VITE_API_BASE_URL=http://127.0.0.1:8000/api
 EOF
 npm install
@@ -86,15 +84,14 @@ npm run dev   # opens on http://localhost:5173
 - Set `ENABLE_METRICS_LOGGING=true` in your environment to capture Time-to-Chatbot-Ready (TCR), cache hit flags, and chat Q/A JSONL logs (`metrics_logs/chat_answers.jsonl`). Disabled by default to avoid any impact on existing flows.
 
 ### Usage
-- Sign up (first/last/email/password) → OTP → auto-login.
 - Generate chatbot: paste URL, optional Force refresh → Run. A brief summary (pages scraped, web searches) shows, then the chatbot appears.
-- Forgot password: email → OTP → new password (separate steps).
+- Ask questions in the chat panel after generation completes.
 
 ## 📁 Project Structure
 
 ```
 backend/            # FastAPI app and pipeline copy
-frontend/           # Vite React UI (auth, run, chat)
+frontend/           # Vite React UI (run, chat)
 knowledge_files/    # Cached knowledge JSONs (used by pipeline)
 requirements.txt    # Backend dependencies
 README.md           # This file
@@ -102,9 +99,8 @@ README.md           # This file
 
 ## 🔒 Authentication (Supabase)
 
-- Use OTP (not magic links) in Supabase email settings for signup and password reset.
-- Backend uses `SUPABASE_SERVICE_ROLE_KEY`; frontend uses `SUPABASE_ANON_KEY`.
-- Reset flow: email → OTP → new password.
+- The current React MVP does not require Supabase or frontend auth.
+- Backend Supabase-related code remains for existing backend/metrics paths and will be addressed separately.
 
 ## 📝 License
 
