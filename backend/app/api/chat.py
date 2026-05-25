@@ -1,3 +1,5 @@
+import os
+
 from fastapi import APIRouter, HTTPException
 from openai import OpenAI
 
@@ -11,6 +13,15 @@ from ..services.metrics_logger import (
 router = APIRouter()
 
 
+def get_openai_client() -> OpenAI:
+    if not os.getenv("OPENAI_API_KEY"):
+        raise HTTPException(
+            status_code=503,
+            detail="OPENAI_API_KEY is required to generate chat responses.",
+        )
+    return OpenAI()
+
+
 @router.post("/", response_model=ChatResponse, summary="Chat using generated system prompt")
 async def chat(req: ChatRequest):
     if not req.system_prompt:
@@ -21,7 +32,7 @@ async def chat(req: ChatRequest):
         messages.append({"role": m.role, "content": m.content})
 
     try:
-        client = OpenAI()
+        client = get_openai_client()
         resp = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,
@@ -50,5 +61,7 @@ async def chat(req: ChatRequest):
                 print(f"⚠️ Metrics logging skipped: {log_exc}")
 
         return ChatResponse(message=ChatMessage(role="assistant", content=answer))
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))

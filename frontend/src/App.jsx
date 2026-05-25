@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { supabase } from "./supabaseClient";
+import { supabase, supabaseConfigError } from "./supabaseClient";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -25,7 +25,7 @@ export default function App() {
   const [view, setView] = useState("login"); // login | signup | otp | app
   const [emailDisplay, setEmailDisplay] = useState("");
   const [session, setSession] = useState(null);
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState(supabaseConfigError || "");
   const [forceRefresh, setForceRefresh] = useState(false);
   const [urlValue, setUrlValue] = useState("https://example.com");
   const [jobResult, setJobResult] = useState(null);
@@ -62,8 +62,16 @@ export default function App() {
   const otpCodeRef = useRef(null);
   const urlInputRef = useRef(null);
   const defaultUrl = "https://example.com";
+  const authDisabled = !supabase;
+
+  const requireSupabase = (setMessage = setStatus) => {
+    if (supabase) return true;
+    setMessage(supabaseConfigError);
+    return false;
+  };
 
   const handleSignup = async () => {
+    if (!requireSupabase()) return;
     const email = signupEmailRef.current?.value?.trim() || "";
     const password = signupPassRef.current?.value || "";
     const first = signupFirstRef.current?.value?.trim() || "";
@@ -86,6 +94,7 @@ export default function App() {
   };
 
   const handleVerifyOtp = async () => {
+    if (!requireSupabase()) return;
     const otp = otpCodeRef.current?.value?.trim() || "";
     setStatus("Verifying OTP...");
     const { error } = await supabase.auth.verifyOtp({
@@ -116,6 +125,7 @@ export default function App() {
   };
 
   const handleLogin = async () => {
+    if (!requireSupabase()) return;
     if (isAuthLoading) return;
     setIsAuthLoading(true);
     const email = loginEmailRef.current?.value?.trim() || "";
@@ -140,7 +150,7 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    if (supabase) await supabase.auth.signOut();
     setSession(null);
     setJobResult(null);
     setSystemPrompt("");
@@ -154,6 +164,7 @@ export default function App() {
   };
 
   const handleSendReset = async () => {
+    if (!requireSupabase(setResetStatus)) return;
     const email =
       resetEmailRef.current?.value?.trim() ||
       resetEmail ||
@@ -187,6 +198,7 @@ export default function App() {
   };
 
   const handleConfirmReset = async () => {
+    if (!requireSupabase(setResetStatus)) return;
     const email =
       resetEmailRef.current?.value?.trim() ||
       resetEmail ||
@@ -310,7 +322,7 @@ export default function App() {
         ref={loginPassRef}
         defaultValue=""
       />
-      <button onClick={handleLogin} disabled={isAuthLoading} className={isAuthLoading ? "loading" : ""}>
+      <button onClick={handleLogin} disabled={isAuthLoading || authDisabled} className={isAuthLoading ? "loading" : ""}>
         {isAuthLoading ? "Logging in..." : "Log In"}
       </button>
       <p className="link" onClick={() => setView("signup")}>
@@ -332,7 +344,7 @@ export default function App() {
       <input placeholder="Last name" ref={signupLastRef} defaultValue="" />
       <input placeholder="Email" ref={signupEmailRef} defaultValue="" />
       <input placeholder="Password" type="password" ref={signupPassRef} defaultValue="" />
-      <button onClick={handleSignup}>Sign Up</button>
+      <button onClick={handleSignup} disabled={authDisabled}>Sign Up</button>
       <p className="link" onClick={() => setView("login")}>
         Back to login
       </p>
@@ -348,7 +360,7 @@ export default function App() {
             ref={resetEmailRef}
             defaultValue=""
           />
-          <button onClick={handleSendReset}>Send reset OTP</button>
+          <button onClick={handleSendReset} disabled={authDisabled}>Send reset OTP</button>
         </>
       )}
       {resetSent && !resetOtpEntered && (
@@ -358,7 +370,7 @@ export default function App() {
             ref={resetOtpRef}
             defaultValue=""
           />
-          <button onClick={handleVerifyResetOtp}>Verify OTP</button>
+          <button onClick={handleVerifyResetOtp} disabled={authDisabled}>Verify OTP</button>
         </>
       )}
       {resetSent && resetOtpEntered && (
@@ -376,7 +388,7 @@ export default function App() {
             ref={resetNewPassConfirmRef}
             defaultValue=""
           />
-          <button onClick={handleConfirmReset}>Confirm reset</button>
+          <button onClick={handleConfirmReset} disabled={authDisabled}>Confirm reset</button>
         </>
       )}
       <div className="status">{resetStatus}</div>
@@ -390,7 +402,7 @@ export default function App() {
     <Panel title="Enter OTP" subtitle="Check your inbox for the 6-digit code.">
       <div className="muted small">OTP sent to: {otpEmail || "your email"}</div>
       <input placeholder="OTP code" ref={otpCodeRef} defaultValue="" />
-      <button onClick={handleVerifyOtp}>Verify OTP & Login</button>
+      <button onClick={handleVerifyOtp} disabled={authDisabled}>Verify OTP & Login</button>
       <p className="link" onClick={() => setView("login")}>
         Back to login
       </p>
