@@ -19,7 +19,7 @@ def get_cors_origins() -> list[str]:
 def get_application() -> FastAPI:
     app = FastAPI(
         title="ChatSMITH Backend",
-        description="FastAPI backend for ChatSMITH pipeline and auth orchestration",
+        description="FastAPI backend for the ChatSMITH scraping and chat pipeline",
         version="0.1.0",
     )
 

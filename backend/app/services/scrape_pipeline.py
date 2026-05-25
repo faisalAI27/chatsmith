@@ -18,13 +18,9 @@ import gradio as gr
 from dotenv import load_dotenv
 from openai import OpenAI
 from pydantic import BaseModel, Field
-from supabase import Client, create_client
 from agents import Agent, WebSearchTool, Runner
 from agents.model_settings import ModelSettings
-from .metrics_logger import (
-    log_chat_answer,
-    save_chat_answer_to_supabase,
-)
+from .metrics_logger import log_chat_answer
 
 # Initialize
 # Backend runtime writes cache files to backend/knowledge_files. The repository
@@ -59,32 +55,6 @@ async def _maybe_await(value):
 SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 
 print("✅ Imports loaded")
-
-# Supabase auth setup
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
-_supabase_client: Client | None = None
-
-
-def get_supabase_client() -> Client | None:
-    """
-    Lazily initialize the Supabase client.
-    Returns None if credentials are missing or initialization fails.
-    """
-    global _supabase_client
-    if _supabase_client:
-        return _supabase_client
-
-    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
-        print("⚠️ Supabase credentials not configured; authentication disabled.")
-        return None
-
-    try:
-        _supabase_client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
-    except Exception as exc:
-        print(f"❌ Supabase initialization failed: {exc}")
-        _supabase_client = None
-    return _supabase_client
 
 # ============================================================
 # SMART WEBSITE SCRAPER - PRIMARY SOURCE (Phase 3 Enhanced)
@@ -953,10 +923,10 @@ def knowledge_to_chatbot_context(knowledge: Dict) -> str:
 print("✅ JSON Knowledge Base functions loaded (with caching)")
 
 # ============================================================
-# AUTHENTICATION HELPERS (Supabase)
+# UI CONSTANTS
 # ============================================================
 
-LOGIN_PLACEHOLDER = "Log in to start chatting."
+CHAT_PLACEHOLDER = "Ask anything about the website..."
 DEFAULT_STATUS_TEXT = "➡️ Enter a URL and click **Generate Chatbot** to start."
 CUSTOM_CSS = """
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap');
@@ -999,10 +969,6 @@ body, * {
 .secondary-btn button {
   border: 1px solid var(--border);
 }
-.danger-btn button {
-  border: 1px solid #ef4444;
-  color: #ef4444 !important;
-}
 .input-wide input {
   background: rgba(255,255,255,0.04) !important;
   border: 1px solid var(--border) !important;
@@ -1011,232 +977,6 @@ body, * {
   color: #a5f3fc;
 }
 """
-
-
-def _view_updates(target: str):
-    """Return visibility updates for login/signup/otp panels."""
-    return (
-        gr.update(visible=target == "login"),   # login_card
-        gr.update(visible=target == "signup"),  # signup_card
-        gr.update(visible=target == "otp"),     # otp_card
-    )
-
-
-def _auth_failure(message: str):
-    """Return a consistent set of UI updates for failed/disabled auth."""
-    view = _view_updates("login")
-    return (
-        message,
-        None,
-        gr.update(visible=False),   # app content wrapper
-        gr.update(visible=False),   # logout button
-        gr.update(interactive=False),  # run button
-        gr.update(interactive=False, placeholder=LOGIN_PLACEHOLDER),  # message box
-        gr.update(interactive=False),  # send button
-        gr.update(value=""),  # user badge
-        gr.update(value=DEFAULT_STATUS_TEXT),  # status box
-        "",  # system prompt state
-        "the site",  # name state
-        [],  # chatbot history
-        gr.update(visible=True, value="🔒 Please log in to access the app."),  # app gate
-        *view,
-    )
-
-
-def _otp_pending(message: str):
-    """Return UI updates when waiting for OTP verification."""
-    view = _view_updates("otp")
-    return (
-        message,
-        None,
-        gr.update(visible=False),   # app content wrapper
-        gr.update(visible=False),   # logout button
-        gr.update(interactive=False),  # run button
-        gr.update(interactive=False, placeholder=LOGIN_PLACEHOLDER),  # message box
-        gr.update(interactive=False),  # send button
-        gr.update(value=""),  # user badge
-        gr.update(value=DEFAULT_STATUS_TEXT),  # status box
-        "",  # system prompt state
-        "the site",  # name state
-        [],  # chatbot history
-        gr.update(visible=True, value="📧 Check your email for the OTP, then verify below."),  # app gate
-        *view,
-    )
-
-
-def _auth_success(email: str, session):
-    """Return UI updates for a successful login/signup."""
-    view = _view_updates("login")
-    user_state = {
-        "email": email,
-        "access_token": getattr(session, "access_token", ""),
-        "refresh_token": getattr(session, "refresh_token", ""),
-    }
-    return (
-        f"✅ Logged in as {email}",
-        user_state,
-        gr.update(visible=True),
-        gr.update(visible=True),
-        gr.update(interactive=True),
-        gr.update(interactive=True, placeholder="Ask anything about the website..."),
-        gr.update(interactive=True),
-        gr.update(value=f"Logged in as **{email}**"),
-        gr.update(value=DEFAULT_STATUS_TEXT),
-        "",  # system prompt reset
-        "the site",
-        [],
-        gr.update(visible=False),  # hide app gate when logged in
-        *view,
-    )
-
-
-def perform_login(email: str, password: str):
-    """Shared login handler."""
-    client = get_supabase_client()
-    if not client:
-        return _auth_failure("❌ Supabase credentials missing. Add SUPABASE_URL and SUPABASE_ANON_KEY to .env.")
-
-    email = (email or "").strip()
-    password = (password or "").strip()
-    if not email or not password:
-        return _auth_failure("⚠️ Please provide both email and password.")
-
-    try:
-        response = client.auth.sign_in_with_password({"email": email, "password": password})
-        session = getattr(response, "session", None)
-        user = getattr(response, "user", None)
-
-        if session is None:
-            return _auth_failure("⚠️ Login succeeded but no session was created. Verify email confirmation settings in Supabase.")
-
-        user_email = getattr(user, "email", email)
-        return _auth_success(user_email, session)
-    except Exception as exc:
-        return _auth_failure(f"❌ Login failed: {str(exc)[:120]}")
-
-
-def handle_signup(email: str, password: str, first_name: str, last_name: str):
-    """
-    Signup now requires first & last name and will always require OTP verification.
-    """
-    client = get_supabase_client()
-    if not client:
-        return _auth_failure("❌ Supabase credentials missing. Add SUPABASE_URL and SUPABASE_ANON_KEY to .env.")
-
-    email = (email or "").strip()
-    password = (password or "").strip()
-    first_name = (first_name or "").strip()
-    last_name = (last_name or "").strip()
-
-    if not (email and password and first_name and last_name):
-        return _auth_failure("⚠️ Please provide first name, last name, email, and password.")
-
-    try:
-        client.auth.sign_up({
-            "email": email,
-            "password": password,
-            "data": {"first_name": first_name, "last_name": last_name},
-        })
-        return _otp_pending("✅ Sign-up initiated. Enter the OTP from your email, then verify below.")
-    except Exception as exc:
-        return _auth_failure(f"❌ Sign-up failed: {str(exc)[:120]}")
-
-
-def handle_verify_signup_otp(email: str, password: str, otp: str):
-    """
-    Verify the signup OTP and log in after confirmation.
-    """
-    client = get_supabase_client()
-    if not client:
-        return _auth_failure("❌ Supabase credentials missing. Add SUPABASE_URL and SUPABASE_ANON_KEY to .env.")
-
-    email = (email or "").strip()
-    password = (password or "").strip()
-    otp = (otp or "").strip()
-
-    if not (email and password and otp):
-        return _auth_failure("⚠️ Provide email, password, and the OTP code.")
-
-    try:
-        resp = client.auth.verify_otp({"email": email, "token": otp, "type": "signup"})
-        session = getattr(resp, "session", None)
-        user = getattr(resp, "user", None)
-
-        # If no session returned, try logging in now that email is confirmed
-        if session is None:
-            try:
-                login_resp = client.auth.sign_in_with_password({"email": email, "password": password})
-                session = getattr(login_resp, "session", None)
-                user = getattr(login_resp, "user", user)
-            except Exception:
-                pass
-
-        if session is None:
-            return _auth_failure("⚠️ OTP verified but no session was created. Try logging in now.")
-
-        user_email = getattr(user, "email", email)
-        return _auth_success(user_email, session)
-    except Exception as exc:
-        return _auth_failure(f"❌ OTP verification failed: {str(exc)[:120]}")
-
-
-def handle_login(email: str, password: str):
-    """Gradio handler for logging in."""
-    return perform_login(email, password)
-
-
-def handle_logout(current_user):
-    """Gradio handler for logging out."""
-    try:
-        client = get_supabase_client()
-        if client and current_user:
-            client.auth.sign_out()
-    except Exception as exc:
-        print(f"⚠️ Supabase sign out failed: {exc}")
-
-    return _auth_failure("ℹ️ You have been logged out.")
-
-
-def handle_send_reset(email: str):
-    """Send password reset OTP email."""
-    client = get_supabase_client()
-    if not client:
-        return "❌ Supabase credentials missing. Add SUPABASE_URL and SUPABASE_ANON_KEY to .env."
-
-    email = (email or "").strip()
-    if not email:
-        return "⚠️ Please provide an email to send the reset OTP."
-
-    try:
-        client.auth.reset_password_email(email)
-        return "✅ Reset OTP sent to your email. Check your inbox."
-    except Exception as exc:
-        return f"❌ Could not send reset OTP: {str(exc)[:120]}"
-
-
-def handle_confirm_reset(email: str, otp: str, new_password: str):
-    """Confirm password reset using OTP."""
-    client = get_supabase_client()
-    if not client:
-        return "❌ Supabase credentials missing. Add SUPABASE_URL and SUPABASE_ANON_KEY to .env."
-
-    email = (email or "").strip()
-    otp = (otp or "").strip()
-    new_password = (new_password or "").strip()
-
-    if not (email and otp and new_password):
-        return "⚠️ Provide email, OTP, and new password."
-
-    try:
-        client.auth.verify_otp({
-            "email": email,
-            "token": otp,
-            "type": "recovery",
-            "password": new_password,
-        })
-        return "✅ Password updated. You can now log in with the new password."
-    except Exception as exc:
-        return f"❌ Reset failed: {str(exc)[:120]}"
 
 # ============================================================
 # UI HELPER FUNCTIONS (Updated for new workflow + Phase 3 Error Handling)
@@ -1532,12 +1272,6 @@ def chat_fn(message, history, system_prompt, name, user=None):
     if not message or not message.strip():
         return "", history
 
-    if not user:
-        return "", history + [
-            {"role": "user", "content": message},
-            {"role": "assistant", "content": "⚠️ Please log in with Supabase before chatting."}
-        ]
-    
     if not system_prompt:
         return "", history + [
             {"role": "user", "content": message},
@@ -1603,16 +1337,6 @@ def chat_fn(message, history, system_prompt, name, user=None):
             provenance=provenance,
             user=user_email,
         )
-        try:
-            save_chat_answer_to_supabase(
-                question=message,
-                answer=answer,
-                system_prompt=system_prompt,
-                user_id=user_email,
-                url=None,  # URL not available in this handler
-            )
-        except Exception as exc:
-            print(f"⚠️ Supabase chat metrics skipped: {exc}")
 
     # Return in Gradio 6.x format
     return "", history + [
@@ -1621,18 +1345,8 @@ def chat_fn(message, history, system_prompt, name, user=None):
     ]
 
 
-async def handle_run_research(url, force_refresh, user, progress=gr.Progress()):
+async def handle_run_research(url, force_refresh, progress=gr.Progress()):
     """Handle research button click - uses the NEW workflow with caching and error handling"""
-    if not user:
-        return (
-            "❌ Please log in with Supabase before generating a chatbot.",
-            "",
-            "the site",
-            [],
-            gr.update(interactive=False, placeholder=LOGIN_PLACEHOLDER),
-            gr.update(interactive=False),
-        )
-
     if not url or not url.strip():
         return (
             build_error_status("invalid_url"),
@@ -1641,6 +1355,7 @@ async def handle_run_research(url, force_refresh, user, progress=gr.Progress()):
             [],
             gr.update(interactive=False),
             gr.update(interactive=False),
+            {},
         )
     
     # Basic URL validation
@@ -1666,6 +1381,7 @@ async def handle_run_research(url, force_refresh, user, progress=gr.Progress()):
             [],
             gr.update(interactive=False),
             gr.update(interactive=False),
+            {},
         )
 
 
@@ -1677,326 +1393,65 @@ with gr.Blocks(title="ChatSMITH - Website to Chatbot") as demo:
     gr.HTML(f"<style>{CUSTOM_CSS}</style>")
     gr.Markdown("""
     <div class="card">
-      <div class="pill">🔐 Access • Supabase Auth</div>
+      <div class="pill">Website to Chatbot</div>
       <h1 style="margin:6px 0 0 0;">🤖 ChatSMITH</h1>
-      <p style="margin:4px 0 4px 0; color:#cbd5e1;">Website to Chatbot Generator</p>
-      <p style="margin:0; color:#94a3b8;">Log in → Enter a URL → Generate → Chat. Cached sites reload instantly.</p>
+      <p style="margin:4px 0 4px 0; color:#cbd5e1;">Generate a chatbot from a website URL.</p>
+      <p style="margin:0; color:#94a3b8;">Enter a URL → Generate → Chat. Cached sites reload instantly.</p>
     </div>
     """)
 
-    # Hidden state
-    auth_state = gr.State(None)
+    user_state = gr.State({"email": "local"})
     system_prompt_state = gr.State("")
     name_state = gr.State("the site")
+    stats_state = gr.State({})
 
-    with gr.Tabs():
-        with gr.Tab("Sign In / Sign Up"):
-            auth_status = gr.Markdown("🔐 Please log in or sign up with Supabase to use the app.")
-            with gr.Row():
-                with gr.Column(elem_classes="card", visible=True) as login_card:
-                    gr.Markdown("### Welcome back\nSign in to continue.")
-                    first_name_in = gr.Textbox(label="First name (sign up)", placeholder="Ada", scale=1, elem_classes="input-wide")
-                    last_name_in = gr.Textbox(label="Last name (sign up)", placeholder="Lovelace", scale=1, elem_classes="input-wide")
-                    email_in = gr.Textbox(label="Email", placeholder="you@example.com", scale=2, elem_classes="input-wide")
-                    password_in = gr.Textbox(label="Password", type="password", placeholder="••••••••", scale=2, elem_classes="input-wide")
-                    with gr.Row():
-                        login_btn = gr.Button("🔐 Log In", variant="primary", elem_classes="primary-btn")
-                        signup_nav_btn = gr.Button("🆕 Don't have an account? Sign Up", elem_classes="secondary-btn")
-                        logout_btn = gr.Button("Log Out", variant="stop", visible=False, elem_classes="danger-btn")
-                with gr.Column(elem_classes="card", visible=False) as signup_card:
-                    gr.Markdown("### Create your account")
-                    su_first = gr.Textbox(label="First name", placeholder="Ada", elem_classes="input-wide")
-                    su_last = gr.Textbox(label="Last name", placeholder="Lovelace", elem_classes="input-wide")
-                    su_email = gr.Textbox(label="Email", placeholder="you@example.com", elem_classes="input-wide")
-                    su_password = gr.Textbox(label="Password", type="password", placeholder="••••••••", elem_classes="input-wide")
-                    signup_btn = gr.Button("🆕 Sign Up (OTP)", variant="primary", elem_classes="primary-btn")
-                    back_login_from_signup = gr.Button("⬅️ Back to Login", elem_classes="secondary-btn")
-                with gr.Column(elem_classes="card", visible=False) as otp_card:
-                    gr.Markdown("### Enter OTP")
-                    otp_email = gr.Textbox(label="Email", placeholder="you@example.com", elem_classes="input-wide")
-                    otp_password = gr.Textbox(label="Password", type="password", placeholder="••••••••", elem_classes="input-wide")
-                    otp_in = gr.Textbox(label="Enter sign-up OTP", placeholder="123456", elem_classes="input-wide")
-                    verify_otp_btn = gr.Button("✅ Verify OTP & Login", variant="primary", elem_classes="primary-btn")
-                    back_login_from_otp = gr.Button("⬅️ Back to Login", elem_classes="secondary-btn")
-                with gr.Column(elem_classes="card"):
-                    gr.Markdown("### Password reset (OTP)")
-                    reset_email_in = gr.Textbox(label="Email", placeholder="you@example.com", scale=2, elem_classes="input-wide")
-                    reset_otp_in = gr.Textbox(label="Reset OTP", placeholder="123456", scale=2, elem_classes="input-wide")
-                    reset_new_password_in = gr.Textbox(label="New password", type="password", placeholder="••••••••", scale=2, elem_classes="input-wide")
-                    with gr.Row():
-                        send_reset_btn = gr.Button("📧 Send reset OTP", elem_classes="secondary-btn")
-                        confirm_reset_btn = gr.Button("🔑 Confirm reset", variant="primary", elem_classes="primary-btn")
-                    reset_status = gr.Markdown("", elem_classes="badge")
-                    gr.Markdown("### Why sign in?\n- Keep your scraping sessions secure\n- Avoid cross-user leakage\n- Fast reloads from cache")
-                    user_badge = gr.Markdown("", elem_classes="badge")
+    with gr.Column():
+        with gr.Row():
+            url_in = gr.Textbox(
+                label="Website URL",
+                placeholder="https://example.com",
+                scale=4,
+                elem_classes="input-wide",
+            )
+            force_refresh = gr.Checkbox(
+                label="🔄 Force Refresh",
+                value=False,
+                info="Re-scrape the website even if cached",
+            )
+            run_btn = gr.Button("🚀 Generate Chatbot", variant="primary", scale=1, elem_classes="primary-btn")
 
-        with gr.Tab("App"):
-            app_gate = gr.Markdown("🔒 Please log in to access the app.")
-            with gr.Column(visible=False) as app_wrapper:
-                with gr.Row():
-                    url_in = gr.Textbox(
-                        label="Website URL", 
-                        placeholder="https://example.com",
-                        scale=4
-                    )
-                    force_refresh = gr.Checkbox(
-                        label="🔄 Force Refresh",
-                        value=False,
-                        info="Re-scrape the website even if cached"
-                    )
-                    run_btn = gr.Button("🚀 Generate Chatbot", variant="primary", scale=1, interactive=False)
+        status_box = gr.Markdown(DEFAULT_STATUS_TEXT)
 
-                status_box = gr.Markdown("➡️ Enter a URL and click **Generate Chatbot** to start.")
+        gr.Markdown("---")
+        gr.Markdown("### 💬 Chat with the website")
 
-                gr.Markdown("---")
-                gr.Markdown("### 💬 Chat with the website")
+        chatbot = gr.Chatbot(label="Chat", height=400, value=[])
 
-                # Chatbot - Gradio 6.x uses messages format by default
-                chatbot = gr.Chatbot(label="Chat", height=400, value=[])
-                
-                with gr.Row():
-                    msg = gr.Textbox(
-                        label="Your question", 
-                        placeholder=LOGIN_PLACEHOLDER, 
-                        scale=4,
-                        interactive=False
-                    )
-                    send_btn = gr.Button("Send", scale=1, interactive=False)
-
-    # Event handlers
-    login_btn.click(
-        fn=handle_login,
-        inputs=[email_in, password_in],
-        outputs=[
-            auth_status,
-            auth_state,
-            app_wrapper,
-            logout_btn,
-            run_btn,
-            msg,
-            send_btn,
-            user_badge,
-            status_box,
-            system_prompt_state,
-            name_state,
-            chatbot,
-            app_gate,
-            login_card,
-            signup_card,
-            otp_card,
-        ],
-    )
-
-    signup_btn.click(
-        fn=handle_signup,
-        inputs=[su_email, su_password, su_first, su_last],
-        outputs=[
-            auth_status,
-            auth_state,
-            app_wrapper,
-            logout_btn,
-            run_btn,
-            msg,
-            send_btn,
-            user_badge,
-            status_box,
-            system_prompt_state,
-            name_state,
-            chatbot,
-            app_gate,
-            login_card,
-            signup_card,
-            otp_card,
-        ],
-    )
-
-    verify_otp_btn.click(
-        fn=handle_verify_signup_otp,
-        inputs=[otp_email, otp_password, otp_in],
-        outputs=[
-            auth_status,
-            auth_state,
-            app_wrapper,
-            logout_btn,
-            run_btn,
-            msg,
-            send_btn,
-            user_badge,
-            status_box,
-            system_prompt_state,
-            name_state,
-            chatbot,
-            app_gate,
-            login_card,
-            signup_card,
-            otp_card,
-        ],
-    )
-
-    logout_btn.click(
-        fn=handle_logout,
-        inputs=[auth_state],
-        outputs=[
-            auth_status,
-            auth_state,
-            app_wrapper,
-            logout_btn,
-            run_btn,
-            msg,
-            send_btn,
-            user_badge,
-            status_box,
-            system_prompt_state,
-            name_state,
-            chatbot,
-            app_gate,
-            login_card,
-            signup_card,
-            otp_card,
-        ],
-    )
-
-    send_reset_btn.click(
-        fn=handle_send_reset,
-        inputs=[reset_email_in],
-        outputs=[reset_status],
-    )
-
-    confirm_reset_btn.click(
-        fn=handle_confirm_reset,
-        inputs=[reset_email_in, reset_otp_in, reset_new_password_in],
-        outputs=[reset_status],
-    )
-
-    signup_nav_btn.click(
-        fn=lambda: (
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            *_view_updates("signup"),
-        ),
-        inputs=[],
-        outputs=[
-            auth_status,
-            auth_state,
-            app_wrapper,
-            logout_btn,
-            run_btn,
-            msg,
-            send_btn,
-            user_badge,
-            status_box,
-            system_prompt_state,
-            name_state,
-            chatbot,
-            app_gate,
-            login_card,
-            signup_card,
-            otp_card,
-        ],
-    )
-
-    back_login_from_signup.click(
-        fn=lambda: (
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            *_view_updates("login"),
-        ),
-        inputs=[],
-        outputs=[
-            auth_status,
-            auth_state,
-            app_wrapper,
-            logout_btn,
-            run_btn,
-            msg,
-            send_btn,
-            user_badge,
-            status_box,
-            system_prompt_state,
-            name_state,
-            chatbot,
-            app_gate,
-            login_card,
-            signup_card,
-            otp_card,
-        ],
-    )
-
-    back_login_from_otp.click(
-        fn=lambda: (
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            gr.update(),
-            *_view_updates("login"),
-        ),
-        inputs=[],
-        outputs=[
-            auth_status,
-            auth_state,
-            app_wrapper,
-            logout_btn,
-            run_btn,
-            msg,
-            send_btn,
-            user_badge,
-            status_box,
-            system_prompt_state,
-            name_state,
-            chatbot,
-            app_gate,
-            login_card,
-            signup_card,
-            otp_card,
-        ],
-    )
+        with gr.Row():
+            msg = gr.Textbox(
+                label="Your question",
+                placeholder=CHAT_PLACEHOLDER,
+                scale=4,
+                interactive=False,
+                elem_classes="input-wide",
+            )
+            send_btn = gr.Button("Send", scale=1, interactive=False)
 
     run_btn.click(
         fn=handle_run_research,
-        inputs=[url_in, force_refresh, auth_state],
-        outputs=[status_box, system_prompt_state, name_state, chatbot, msg, send_btn],
+        inputs=[url_in, force_refresh],
+        outputs=[status_box, system_prompt_state, name_state, chatbot, msg, send_btn, stats_state],
     )
 
     send_btn.click(
         fn=chat_fn,
-        inputs=[msg, chatbot, system_prompt_state, name_state, auth_state],
+        inputs=[msg, chatbot, system_prompt_state, name_state, user_state],
         outputs=[msg, chatbot],
     )
 
     msg.submit(
         fn=chat_fn,
-        inputs=[msg, chatbot, system_prompt_state, name_state, auth_state],
+        inputs=[msg, chatbot, system_prompt_state, name_state, user_state],
         outputs=[msg, chatbot],
     )
 

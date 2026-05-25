@@ -2,7 +2,6 @@ import json
 import os
 import sys
 from types import SimpleNamespace
-from pathlib import Path
 
 import pytest
 
@@ -90,87 +89,23 @@ def test_log_chat_answer(tmp_path):
     assert record["user"] == "user@example.com"
 
 
-def test_save_job_metrics_no_supabase(monkeypatch):
-    monkeypatch.setattr(ml, "get_supabase_client", lambda: None)
-    ml.save_job_metrics_to_supabase("https://example.com", {"cache_hit": True})
-    # Should not raise
+def test_log_job_metrics(tmp_path):
+    log_file = tmp_path / "jobs.jsonl"
 
-
-def test_save_chat_answer_no_supabase(monkeypatch):
-    monkeypatch.setattr(ml, "get_supabase_client", lambda: None)
-    ml.save_chat_answer_to_supabase("q", "a", system_prompt="ctx")
-    # Should not raise
-
-
-def test_save_job_metrics_payload(monkeypatch):
-    captured = {}
-
-    class Table:
-        def __init__(self, name):
-            self.name = name
-
-        def insert(self, payload):
-            captured["table"] = self.name
-            captured["payload"] = payload
-            return self
-
-        def execute(self):
-            captured["executed"] = True
-            return True
-
-    class Client:
-        def table(self, name):
-            return Table(name)
-
-    monkeypatch.setattr(ml, "get_supabase_client", lambda: Client())
-    ml.save_job_metrics_to_supabase(
+    ml.log_job_metrics(
         "https://example.com",
         {"cache_hit": True, "tcr_seconds": 1.5, "searches_run": 2, "pages_scraped": 3, "gaps_found": 1},
         user_id="user-1",
+        log_path=log_file,
     )
-    assert captured["table"] == "metrics_job_runs"
-    assert captured["payload"]["url"] == "https://example.com"
-    assert captured["payload"]["cache_hit"] is True
-    assert captured["payload"]["tcr_seconds"] == 1.5
-    assert captured["payload"]["searches_run"] == 2
-    assert captured["payload"]["pages_scraped"] == 3
-    assert captured["payload"]["gaps_found"] == 1
-    assert captured["payload"]["user_id"] == "user-1"
-    assert captured["executed"] is True
 
-
-def test_save_chat_answer_payload(monkeypatch):
-    captured = {}
-
-    class Table:
-        def __init__(self, name):
-            self.name = name
-
-        def insert(self, payload):
-            captured["table"] = self.name
-            captured["payload"] = payload
-            return self
-
-        def execute(self):
-            captured["executed"] = True
-            return True
-
-    class Client:
-        def table(self, name):
-            return Table(name)
-
-    monkeypatch.setattr(ml, "get_supabase_client", lambda: Client())
-    ml.save_chat_answer_to_supabase(
-        question="How?",
-        answer="Here",
-        system_prompt="Contains SECONDARY SOURCE",
-        user_id="user-2",
-        url="https://example.com",
-    )
-    assert captured["table"] == "metrics_chat_answers"
-    assert captured["payload"]["question"] == "How?"
-    assert captured["payload"]["answer"] == "Here"
-    assert captured["payload"]["provenance"] == "primary_plus_secondary"
-    assert captured["payload"]["url"] == "https://example.com"
-    assert captured["payload"]["user_id"] == "user-2"
-    assert captured["executed"] is True
+    data = log_file.read_text(encoding="utf-8").strip().splitlines()
+    assert len(data) == 1
+    record = json.loads(data[0])
+    assert record["url"] == "https://example.com"
+    assert record["cache_hit"] is True
+    assert record["tcr_seconds"] == 1.5
+    assert record["searches_run"] == 2
+    assert record["pages_scraped"] == 3
+    assert record["gaps_found"] == 1
+    assert record["user_id"] == "user-1"
