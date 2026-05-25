@@ -1,10 +1,9 @@
 from fastapi import APIRouter, HTTPException
 from typing import Dict, Any
-import asyncio
 
 from ..models.jobs import JobCreate, JobStatus
 from ..services import scrape_pipeline
-from ..services.metrics_logger import save_job_metrics_to_supabase
+from ..services.metrics_logger import log_job_metrics
 from ..services.scrape_pipeline import ENABLE_METRICS
 
 router = APIRouter()
@@ -33,10 +32,10 @@ async def run_job(body: JobCreate) -> JobStatus:
         }
         if ENABLE_METRICS:
             try:
-                save_job_metrics_to_supabase(
+                log_job_metrics(
                     url=str(body.url),
                     stats=stats,
-                    user_id=None,  # user id not available in this dev endpoint
+                    user_id=None,
                 )
             except Exception as exc:
                 print(f"⚠️ Metrics logging skipped: {exc}")

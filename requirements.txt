@@ -1,4 +1,4 @@
-# ChatSMITH - backend requirements (FastAPI + scraper + Supabase auth)
+# ChatSMITH - backend requirements (FastAPI + scraper)
 # Updated: 2025-12-06 (pinned for reproducibility with current stack)
 
 fastapi==0.123.10
@@ -11,9 +11,6 @@ pydantic-settings==2.11.0
 # OpenAI + agent stack
 openai==2.9.0
 openai-agents==0.6.2
-
-# Supabase auth
-supabase==2.25.0
 
 # Scraping & parsing
 aiohttp==3.13.2

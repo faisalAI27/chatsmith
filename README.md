@@ -61,8 +61,6 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 export OPENAI_API_KEY=your_openai_api_key_here
-export SUPABASE_URL=https://your-project-id.supabase.co
-export SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 export CORS_ALLOW_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 
 uvicorn backend.app.main:app --reload --port 8000
@@ -96,11 +94,6 @@ knowledge_files/    # Cached knowledge JSONs (used by pipeline)
 requirements.txt    # Backend dependencies
 README.md           # This file
 ```
-
-## 🔒 Authentication (Supabase)
-
-- The current React MVP does not require Supabase or frontend auth.
-- Backend Supabase-related code remains for existing backend/metrics paths and will be addressed separately.
 
 ## 📝 License
 

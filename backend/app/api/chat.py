@@ -6,7 +6,6 @@ from openai import OpenAI
 from ..models.chat import ChatRequest, ChatResponse, ChatMessage
 from ..services.metrics_logger import (
     log_chat_answer,
-    save_chat_answer_to_supabase,
     metrics_enabled,
 )
 
@@ -48,14 +47,6 @@ async def chat(req: ChatRequest):
                     answer=answer,
                     provenance=provenance,
                     user=None,
-                )
-                # Best-effort Supabase log
-                save_chat_answer_to_supabase(
-                    question=req.messages[-1].content if req.messages else "",
-                    answer=answer,
-                    system_prompt=req.system_prompt,
-                    user_id=None,
-                    url=None,
                 )
             except Exception as log_exc:
                 print(f"⚠️ Metrics logging skipped: {log_exc}")
