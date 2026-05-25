@@ -2,6 +2,7 @@ import asyncio
 import os
 import json
 import hashlib
+import inspect
 import re
 import ssl
 import time
@@ -26,14 +27,33 @@ from .metrics_logger import (
 )
 
 # Initialize
-# Knowledge base directory (consistent absolute path to avoid cwd issues)
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-KNOWLEDGE_DIR = PROJECT_ROOT / "knowledge_files"
+# Backend runtime writes cache files to backend/knowledge_files. The repository
+# root knowledge_files directory is still read as a legacy fallback below.
+BACKEND_ROOT = Path(__file__).resolve().parents[2]
+KNOWLEDGE_DIR = BACKEND_ROOT / "knowledge_files"
 KNOWLEDGE_DIR.mkdir(parents=True, exist_ok=True)
 
 load_dotenv(override=True)
-client = OpenAI()
 ENABLE_METRICS = (os.getenv("ENABLE_METRICS_LOGGING", "false") or "").strip().lower() == "true"
+_openai_client: OpenAI | None = None
+
+
+def get_openai_client() -> OpenAI:
+    """Create the OpenAI client only when an OpenAI request is actually made."""
+    global _openai_client
+    if _openai_client:
+        return _openai_client
+    if not os.getenv("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is required for OpenAI requests.")
+    _openai_client = OpenAI()
+    return _openai_client
+
+
+async def _maybe_await(value):
+    """Support simple synchronous stubs in fast unit tests."""
+    if inspect.isawaitable(value):
+        return await value
+    return value
 
 # Create SSL context with certifi certificates (matches notebook behavior)
 SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
@@ -400,6 +420,7 @@ async def scrape_website(url: str) -> Dict:
     if not url.startswith(('http://', 'https://')):
         url = 'https://' + url
     url = url.rstrip('/')
+    original_url = url
     
     results = {
         "source_url": url,
@@ -1352,7 +1373,7 @@ RULES:
     status_text = build_status_new(5, current_step=0, stats=stats)
     
     try:
-        scraped_data = await scrape_website(url)
+        scraped_data = await _maybe_await(scrape_website(url))
         stats["pages_scraped"] = scraped_data.get("total_pages", 0)
         errors.extend(scraped_data.get("errors", []))  # Collect scraping errors
         
@@ -1375,7 +1396,7 @@ RULES:
     
     if scraped_content:
         try:
-            gap_analysis = await analyze_content_gaps(scraped_content, url)
+            gap_analysis = await _maybe_await(analyze_content_gaps(scraped_content, url))
             stats["gaps_found"] = len(gap_analysis.gaps_found)
             
             # ===== Step 3: Run Targeted Searches (if gaps exist) =====
@@ -1392,7 +1413,7 @@ RULES:
                 
                 # Fallback: if agent surfaced gaps but returned no recommended searches, plan them
                 if not search_items:
-                    fallback_plan = await plan_gap_searches(url, scraped_content)
+                    fallback_plan = await _maybe_await(plan_gap_searches(url, scraped_content))
                     search_items = fallback_plan.searches
                 
                 if search_items:
@@ -1414,8 +1435,8 @@ RULES:
         status_text = build_status_new(45, current_step=2, stats=stats, errors=errors)
         
         try:
-            search_plan = await plan_gap_searches(url, "")
-            search_results = await perform_searches(search_plan)
+            search_plan = await _maybe_await(plan_gap_searches(url, ""))
+            search_results = await _maybe_await(perform_searches(search_plan))
             stats["searches_run"] = len(search_results)
         except Exception as e:
             print(f"⚠️ Search error: {e}")
@@ -1432,6 +1453,7 @@ RULES:
             [],
             gr.update(interactive=False),
             gr.update(interactive=False),
+            stats,
         )
     
     # ===== Step 4: Build Knowledge Base =====
@@ -1440,7 +1462,7 @@ RULES:
     
     try:
         name_source = scraped_content[:2000] if scraped_content else str(search_results)[:2000]
-        raw_name = await extract_name_from_text(name_source, url)
+        raw_name = await _maybe_await(extract_name_from_text(name_source, url))
     except Exception as e:
         print(f"⚠️ Name extraction error: {e}")
         raw_name = ""
@@ -1543,6 +1565,7 @@ def chat_fn(message, history, system_prompt, name, user=None):
 
     # Call OpenAI with error handling
     try:
+        client = get_openai_client()
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,

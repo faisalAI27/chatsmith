@@ -69,6 +69,8 @@ uvicorn backend.app.main:app --reload --port 8000
 ```
 
 ### Frontend (Vite React)
+Requires Node ^20.19.0 or >=22.12.0 for Vite 7.
+
 ```bash
 cd frontend
 cat > .env <<'EOF'

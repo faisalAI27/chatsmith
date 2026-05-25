@@ -1,6 +1,19 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .api.router import api_router
+
+DEFAULT_CORS_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+
+def get_cors_origins() -> list[str]:
+    configured = os.getenv("CORS_ALLOW_ORIGINS", "")
+    origins = [origin.strip() for origin in configured.split(",") if origin.strip()]
+    return origins or DEFAULT_CORS_ORIGINS
 
 
 def get_application() -> FastAPI:
@@ -10,14 +23,9 @@ def get_application() -> FastAPI:
         version="0.1.0",
     )
 
-    origins = [
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ]
-
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=origins,  # use ["*"] for dev if desired
+        allow_origins=get_cors_origins(),  # use ["*"] for dev if desired
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

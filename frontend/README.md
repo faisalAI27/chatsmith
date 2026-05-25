@@ -3,7 +3,7 @@
 Minimal scaffold to talk to the FastAPI backend and Supabase auth.
 
 ## Prereqs
-- Node 18+
+- Node ^20.19.0 or >=22.12.0 (required by Vite 7)
 - Supabase project (URL + anon key)
 - Running backend API (defaults to http://localhost:8000/api)
 
