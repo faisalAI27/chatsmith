@@ -9,11 +9,10 @@ import time
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Tuple
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse
 
 import aiohttp
 import certifi
-from bs4 import BeautifulSoup
 import gradio as gr
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -28,6 +27,12 @@ from .scraper_schema import (
     normalize_url_for_cache,
 )
 from .static_extractor import extract_static_page
+from .url_discovery import (
+    classify_page_type,
+    discover_candidate_urls,
+    extract_homepage_links,
+    fetch_sitemap_urls,
+)
 
 # Initialize
 # Official backend runtime cache directory. A legacy root-level knowledge_files/
@@ -67,30 +72,6 @@ print("✅ Imports loaded")
 # SMART WEBSITE SCRAPER - PRIMARY SOURCE (Phase 3 Enhanced)
 # ============================================================
 
-# Keywords to identify important pages (expanded for various site types)
-IMPORTANT_PAGE_KEYWORDS = [
-    # Company/Business pages
-    'about', 'about-us', 'aboutus', 'who-we-are',
-    'services', 'service', 'what-we-do', 'solutions',
-    'products', 'product', 'offerings',
-    'contact', 'contact-us', 'contactus', 'get-in-touch',
-    'faq', 'faqs', 'help', 'support',
-    'team', 'our-team', 'leadership', 'people',
-    'pricing', 'plans', 'packages',
-    'features', 'benefits', 'why-us',
-    'blog', 'news', 'resources',
-    'careers', 'jobs', 'work-with-us',
-    # Personal/Academic websites
-    'publications', 'papers', 'research',
-    'projects', 'portfolio', 'work',
-    'resume', 'cv', 'bio', 'biography',
-    'talks', 'speaking', 'presentations',
-    'courses', 'teaching', 'education',
-    'books', 'articles', 'writing',
-    # Social/Connect pages
-    'connect', 'social', 'links',
-]
-
 MAX_PAGES_TO_SCRAPE = 10
 REQUEST_TIMEOUT = 15
 MAX_RETRIES = 3
@@ -104,6 +85,7 @@ USER_AGENT = (
 
 # Cache for robots.txt to avoid re-fetching
 _robots_cache: Dict[str, set] = {}
+_robots_text_cache: Dict[str, str] = {}
 
 
 async def check_robots_txt(session: aiohttp.ClientSession, base_url: str) -> set:
@@ -119,15 +101,16 @@ async def check_robots_txt(session: aiohttp.ClientSession, base_url: str) -> set
         return _robots_cache[parsed.netloc]
     
     disallowed = set()
+    robots_text = ""
     try:
         headers = {"User-Agent": USER_AGENT}
         async with session.get(robots_url, headers=headers, timeout=aiohttp.ClientTimeout(total=5)) as response:
             if response.status == 200:
-                text = await response.text()
+                robots_text = await response.text()
                 
                 # Simple robots.txt parser - look for Disallow rules
                 current_agent = None
-                for line in text.split('\n'):
+                for line in robots_text.split('\n'):
                     line = line.strip().lower()
                     if line.startswith('user-agent:'):
                         agent = line.split(':', 1)[1].strip()
@@ -143,7 +126,13 @@ async def check_robots_txt(session: aiohttp.ClientSession, base_url: str) -> set
     
     # Cache the result
     _robots_cache[parsed.netloc] = disallowed
+    _robots_text_cache[parsed.netloc] = robots_text
     return disallowed
+
+
+def get_cached_robots_text(base_url: str) -> str:
+    """Return cached robots.txt text for sitemap discovery."""
+    return _robots_text_cache.get(urlparse(base_url).netloc, "")
 
 
 def is_path_allowed(url: str, disallowed_paths: set) -> bool:
@@ -259,74 +248,11 @@ def discover_key_pages(html: str, base_url: str) -> List[str]:
     Discover important internal pages from the homepage.
     Returns a list of URLs to scrape.
     """
-    if not html:
-        return []
-    
-    soup = BeautifulSoup(html, "lxml")
-    parsed_base = urlparse(base_url)
-    base_domain = parsed_base.netloc.lower()
-    
-    discovered_urls = set()
-    scored_urls = []
-    
-    for link in soup.find_all('a', href=True):
-        href = link['href']
-        link_text = link.get_text(strip=True).lower()
-        
-        # Resolve relative URLs
-        full_url = urljoin(base_url, href)
-        parsed_url = urlparse(full_url)
-        
-        # Skip external links, anchors, and non-http
-        if parsed_url.netloc.lower() != base_domain:
-            continue
-        if not parsed_url.scheme in ['http', 'https']:
-            continue
-        if parsed_url.fragment and not parsed_url.path:
-            continue
-        
-        # Skip common non-content pages
-        skip_patterns = ['login', 'signin', 'signup', 'register', 'cart', 'checkout', 
-                        'account', 'password', 'download', '.pdf', '.jpg', '.png', 
-                        '.zip', 'mailto:', 'tel:', 'javascript:']
-        if any(pattern in full_url.lower() for pattern in skip_patterns):
-            continue
-        
-        # Normalize URL (remove trailing slash, query params for dedup)
-        normalized = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}".rstrip('/')
-        
-        if normalized in discovered_urls or normalized == base_url.rstrip('/'):
-            continue
-        
-        discovered_urls.add(normalized)
-        
-        # Score the URL based on importance
-        score = 0
-        url_path = parsed_url.path.lower()
-        
-        for keyword in IMPORTANT_PAGE_KEYWORDS:
-            if keyword in url_path or keyword in link_text:
-                score += 10
-                break
-        
-        # Prefer shorter paths (usually more important)
-        path_depth = len([p for p in parsed_url.path.split('/') if p])
-        if path_depth <= 2:
-            score += 5
-        
-        # Prefer links in navigation
-        parent = link.parent
-        while parent:
-            if parent.name in ['nav', 'header']:
-                score += 3
-                break
-            parent = parent.parent
-        
-        scored_urls.append((normalized, score))
-    
-    # Sort by score descending and return top URLs
-    scored_urls.sort(key=lambda x: x[1], reverse=True)
-    return [url for url, score in scored_urls[:MAX_PAGES_TO_SCRAPE - 1]]
+    return discover_candidate_urls(
+        homepage_html=html,
+        base_url=base_url,
+        max_pages=MAX_PAGES_TO_SCRAPE - 1,
+    )
 
 
 async def scrape_website(url: str) -> Dict:
@@ -385,7 +311,22 @@ async def scrape_website(url: str) -> Dict:
         
         # Step 3: Discover key pages
         print("  🔍 Discovering key pages...")
-        key_pages = discover_key_pages(homepage_html, url)
+        homepage_links = extract_homepage_links(homepage_html, url)
+        robots_text = get_cached_robots_text(url)
+        sitemap_urls = await fetch_sitemap_urls(
+            session,
+            url,
+            robots_text=robots_text,
+            headers={"User-Agent": USER_AGENT},
+        )
+        print(f"  🔗 Homepage links found: {len(homepage_links)}")
+        print(f"  🗺️ Sitemap URLs found: {len(sitemap_urls)}")
+        key_pages = discover_candidate_urls(
+            homepage_html="",
+            base_url=url,
+            sitemap_urls=[*homepage_links, *sitemap_urls],
+            max_pages=MAX_PAGES_TO_SCRAPE - 1,
+        )
         
         # Filter out disallowed pages (robots.txt)
         if disallowed_paths:
@@ -394,7 +335,7 @@ async def scrape_website(url: str) -> Dict:
             if len(key_pages) < original_count:
                 print(f"  🚫 Skipped {original_count - len(key_pages)} pages (robots.txt)")
         
-        print(f"  📋 Found {len(key_pages)} important pages to scrape")
+        print(f"  📋 Selected {len(key_pages)} important pages to scrape")
         
         # Step 4: Scrape key pages with rate limiting
         if key_pages:
@@ -409,7 +350,11 @@ async def scrape_website(url: str) -> Dict:
                 
                 for page_url, page_html, error in page_results:
                     if page_html:
-                        page_data = clean_html_content(page_html, page_url=page_url, page_type="subpage")
+                        page_data = clean_html_content(
+                            page_html,
+                            page_url=page_url,
+                            page_type=classify_page_type(page_url),
+                        )
                         results["pages"].append(page_data)
                         print(f"    ✅ {page_url.split('/')[-1] or 'page'}: {page_data['title'][:30] if page_data['title'] else 'No title'}")
                     elif error:
