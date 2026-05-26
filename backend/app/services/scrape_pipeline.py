@@ -82,6 +82,7 @@ def _index_knowledge_best_effort(
         from .indexing_service import index_knowledge
 
         summary = index_knowledge(knowledge, force_reindex=force_reindex)
+        stats["website_id"] = summary.get("website_id", "")
         stats["chunk_count"] = summary.get("chunks_built", 0)
         stats["vector_indexed"] = bool(
             summary.get("chunks_indexed", 0) and not summary.get("errors")

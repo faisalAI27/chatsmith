@@ -20,6 +20,7 @@ def test_vector_indexing_best_effort_adds_success_stats(monkeypatch):
 
     scrape_pipeline._index_knowledge_best_effort({"metadata": {}}, stats, force_reindex=True)
 
+    assert stats["website_id"] == "site-a"
     assert stats["chunk_count"] == 3
     assert stats["vector_indexed"] is True
     assert stats["vector_indexing_summary"]["website_id"] == "site-a"

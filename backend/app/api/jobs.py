@@ -31,6 +31,7 @@ async def run_job(body: JobCreate) -> JobStatus:
             "cache_hit": bool(stats.get("cache_hit", False)),
         }
         for key in (
+            "website_id",
             "chunk_count",
             "vector_indexed",
             "vector_indexing_summary",
