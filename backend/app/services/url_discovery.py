@@ -38,6 +38,22 @@ LOW_PRIORITY_KEYWORDS = {
     "tag",
     "terms",
 }
+SEARCH_QUERY_KEYS = {
+    "keyword",
+    "q",
+    "query",
+    "s",
+    "search",
+    "term",
+}
+SEARCH_PATH_SEGMENTS = {
+    "find",
+    "lookup",
+    "results",
+    "search",
+    "search-results",
+    "search_results",
+}
 SKIP_PATH_KEYWORDS = {
     "account",
     "cart",
@@ -100,6 +116,10 @@ def _path_tokens(url: str) -> List[str]:
     return [token for token in re.split(r"[/_-]+", parsed.path.lower()) if token]
 
 
+def _path_segments(path: str) -> List[str]:
+    return [segment for segment in (path or "").lower().split("/") if segment]
+
+
 def _has_any_keyword(url: str, keywords: Iterable[str]) -> bool:
     path_text = re.sub(r"[/_-]+", " ", urlparse(url).path.lower())
     compact_path = re.sub(r"[^a-z0-9]+", "", path_text)
@@ -109,6 +129,22 @@ def _has_any_keyword(url: str, keywords: Iterable[str]) -> bool:
         if keyword_text in path_text or compact_keyword in compact_path:
             return True
     return False
+
+
+def _query_keys(query: str) -> set[str]:
+    return {key.lower() for key, _ in parse_qsl(query or "", keep_blank_values=True)}
+
+
+def _has_search_query(parsed_url) -> bool:
+    return bool(_query_keys(parsed_url.query) & SEARCH_QUERY_KEYS)
+
+
+def _is_search_result_path(parsed_url) -> bool:
+    return any(segment in SEARCH_PATH_SEGMENTS for segment in _path_segments(parsed_url.path))
+
+
+def _is_root_path(parsed_url) -> bool:
+    return not parsed_url.path or parsed_url.path == "/"
 
 
 def normalize_discovered_url(url: str) -> str:
@@ -157,9 +193,17 @@ def is_valid_crawl_url(url: str, base_domain: str) -> bool:
         return False
     if any(keyword in path_lower for keyword in SKIP_PATH_KEYWORDS):
         return False
+    if _is_search_result_path(parsed) or _has_search_query(parsed):
+        return False
+
+    query_items = parse_qsl(parsed.query, keep_blank_values=True)
+    if parsed.query and _is_root_path(parsed):
+        return False
 
     depth = len([part for part in parsed.path.split("/") if part])
     is_priority = _has_any_keyword(url, HIGH_PRIORITY_KEYWORDS | MEDIUM_PRIORITY_KEYWORDS)
+    if len(query_items) > 2 and not is_priority:
+        return False
     if depth > 4 and not is_priority:
         return False
 
@@ -170,7 +214,11 @@ def classify_page_type(url: str) -> str:
     """Classify a URL into a coarse page type for extraction metadata."""
     parsed = urlparse(url)
     tokens = set(_path_tokens(url))
-    if not parsed.path or parsed.path == "/":
+    if _is_search_result_path(parsed) or _has_search_query(parsed):
+        return "search_result"
+    if _is_root_path(parsed) and parsed.query:
+        return "query"
+    if _is_root_path(parsed):
         return "homepage"
     if {"about", "about-us", "who-we-are"} & tokens:
         return "about"
@@ -199,6 +247,7 @@ def classify_page_type(url: str) -> str:
 
 def score_url_priority(url: str) -> int:
     """Score higher-value pages ahead of noisy or low-value pages."""
+    parsed = urlparse(url)
     page_type = classify_page_type(url)
     if page_type == "homepage":
         score = 1000
@@ -208,14 +257,20 @@ def score_url_priority(url: str) -> int:
         score = 600
     elif page_type == "legal" or _has_any_keyword(url, LOW_PRIORITY_KEYWORDS):
         score = 100
+    elif page_type in {"search_result", "query"}:
+        score = 10
     else:
         score = 300
 
-    depth = len([part for part in urlparse(url).path.split("/") if part])
+    depth = len([part for part in parsed.path.split("/") if part])
     score += max(0, 30 - depth * 5)
     if _has_any_keyword(url, HIGH_PRIORITY_KEYWORDS):
         score += 50
-    return score
+    if parsed.query:
+        score -= 200
+    if page_type == "search_result":
+        score -= 300
+    return max(0, score)
 
 
 def extract_sitemap_urls_from_robots(robots_text: str) -> List[str]:

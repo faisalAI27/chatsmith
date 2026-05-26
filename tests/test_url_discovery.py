@@ -57,6 +57,9 @@ def test_normalize_discovered_url_removes_tracking_fragment_and_default_ports():
     assert normalize_discovered_url("https://Example.com:443/about/?utm_source=x&b=2#a") == (
         "https://example.com/about?b=2"
     )
+    assert normalize_discovered_url("https://example.com/docs?utm_term=x&utm_content=y&a=1") == (
+        "https://example.com/docs?a=1"
+    )
     assert normalize_discovered_url("http://Example.com:80/") == "http://example.com"
 
 
@@ -87,6 +90,52 @@ def test_score_url_priority_orders_useful_pages_before_low_value_pages():
     assert classify_page_type("https://example.com/docs/getting-started") == "docs"
 
 
+def test_root_query_url_is_not_classified_as_homepage():
+    assert classify_page_type("https://example.com") == "homepage"
+    assert classify_page_type("https://example.com/?page=2") == "query"
+    assert classify_page_type("https://example.com/?search=nasa") == "search_result"
+
+
+def test_search_query_urls_are_filtered_from_crawl_candidates():
+    base_domain = "example.com"
+
+    assert not is_valid_crawl_url("https://example.com/?q=test", base_domain)
+    assert not is_valid_crawl_url("https://example.com/?search=test", base_domain)
+    assert not is_valid_crawl_url("https://example.com/?s=test", base_domain)
+    assert not is_valid_crawl_url("https://example.com/search?q=test", base_domain)
+    assert not is_valid_crawl_url("https://example.com/results?query=test", base_domain)
+    assert not is_valid_crawl_url("https://example.com/find?keyword=test", base_domain)
+    assert not is_valid_crawl_url("https://example.com/lookup?term=test", base_domain)
+
+
+def test_query_and_search_urls_do_not_outrank_useful_static_pages():
+    assert score_url_priority("https://example.com/search?q=moon") < score_url_priority(
+        "https://example.com/about"
+    )
+    assert score_url_priority("https://example.com/?search=nasa") < score_url_priority(
+        "https://example.com/services"
+    )
+    assert score_url_priority("https://example.com/blog?category=news") < score_url_priority(
+        "https://example.com/blog"
+    )
+
+
+def test_useful_static_pages_remain_valid_after_query_filtering():
+    base_domain = "example.com"
+    useful_pages = [
+        "https://example.com/about",
+        "https://example.com/services",
+        "https://example.com/products",
+        "https://example.com/pricing",
+        "https://example.com/docs",
+        "https://example.com/faq",
+        "https://example.com/contact",
+        "https://example.com/blog",
+    ]
+
+    assert all(is_valid_crawl_url(url, base_domain) for url in useful_pages)
+
+
 def test_select_candidate_urls_deduplicates_filters_ranks_and_limits():
     selected = select_candidate_urls(
         base_url="https://example.com",
@@ -108,6 +157,27 @@ def test_select_candidate_urls_deduplicates_filters_ranks_and_limits():
         "https://example.com/pricing",
         "https://example.com/products",
         "https://example.com/privacy",
+    ]
+
+
+def test_select_candidate_urls_skips_nasa_style_search_result_urls():
+    selected = select_candidate_urls(
+        base_url="https://www.nasa.gov",
+        urls=[
+            "https://www.nasa.gov?search=Artemis",
+            "https://www.nasa.gov/?search=Climate+Change",
+            "https://www.nasa.gov/search?query=Mars",
+            "https://www.nasa.gov/about",
+            "https://www.nasa.gov/contact",
+            "https://www.nasa.gov/news",
+        ],
+        max_pages=4,
+    )
+
+    assert selected == [
+        "https://www.nasa.gov/about",
+        "https://www.nasa.gov/contact",
+        "https://www.nasa.gov/news",
     ]
 
 
