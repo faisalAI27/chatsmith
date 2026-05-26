@@ -17,6 +17,7 @@ aiohttp==3.13.2
 certifi==2025.11.12
 beautifulsoup4==4.14.3
 lxml==6.0.2
+playwright==1.60.0
 
 # UI helpers (gradio callbacks used in pipeline)
 gradio==6.0.2
