@@ -20,6 +20,11 @@ from pydantic import BaseModel, Field
 from agents import Agent, WebSearchTool, Runner
 from agents.model_settings import ModelSettings
 from .metrics_logger import log_chat_answer
+from .browser_renderer import (
+    get_scraper_render_mode,
+    render_page_with_playwright,
+    should_render_with_browser,
+)
 from .scraper_schema import (
     convert_v2_page_to_legacy_page,
     ensure_v2_knowledge_shape,
@@ -229,6 +234,8 @@ def clean_html_content(
     page_type: str = "other",
     status_code: int = 200,
     errors: List[str] | None = None,
+    extraction_method: str = "static",
+    quality_extra: Dict | None = None,
 ) -> Dict:
     """
     Clean HTML and extract meaningful content.
@@ -240,7 +247,168 @@ def clean_html_content(
         page_type=page_type,
         status_code=status_code,
         errors=errors,
+        extraction_method=extraction_method,
+        quality_extra=quality_extra,
     )
+
+
+def _render_quality_extra(render_result: Dict) -> Dict:
+    quality_extra = {"render_time_ms": int(render_result.get("render_time_ms") or 0)}
+    final_url = render_result.get("final_url")
+    if final_url:
+        quality_extra["final_url"] = final_url
+    return quality_extra
+
+
+def _add_page_quality_error(page_data: Dict, error_message: str) -> None:
+    quality = page_data.setdefault("quality", {})
+    errors = quality.setdefault("errors", [])
+    if not isinstance(errors, list):
+        errors = [str(errors)]
+        quality["errors"] = errors
+    if error_message:
+        errors.append(error_message)
+
+
+async def fetch_static_html_with_fallback(
+    session: aiohttp.ClientSession,
+    page_url: str,
+    allow_http_fallback: bool = False,
+) -> Tuple[str, str, str]:
+    """Fetch static HTML, optionally falling back from HTTPS to HTTP for the homepage."""
+    _, html, error = await fetch_page_with_retry(session, page_url)
+    effective_url = page_url
+
+    if allow_http_fallback and not html and page_url.startswith("https://"):
+        fallback_url = "http://" + page_url[len("https://"):]
+        print(f"  🔁 HTTPS fetch failed, retrying with HTTP: {fallback_url}")
+        _, html, error = await fetch_page_with_retry(session, fallback_url)
+        if html:
+            effective_url = fallback_url.rstrip("/")
+
+    return effective_url, html, error
+
+
+async def extract_page_with_render_mode(
+    session: aiohttp.ClientSession,
+    page_url: str,
+    page_type: str = "other",
+    allow_http_fallback: bool = False,
+) -> Tuple[Dict | None, str, str, str]:
+    """
+    Extract one page according to SCRAPER_RENDER_MODE.
+
+    Returns (page_record, html_used_for_discovery, effective_url, error_message).
+    Unit tests monkeypatch the fetch/render functions so normal pytest does not
+    require installed browser binaries.
+    """
+    render_mode = get_scraper_render_mode()
+
+    if render_mode == "browser":
+        render_result = await render_page_with_playwright(page_url)
+        if render_result.get("success"):
+            effective_url = render_result.get("final_url") or page_url
+            html = render_result.get("html", "")
+            return (
+                clean_html_content(
+                    html,
+                    page_url=effective_url,
+                    page_type=page_type,
+                    extraction_method="playwright",
+                    quality_extra=_render_quality_extra(render_result),
+                ),
+                html,
+                effective_url,
+                "",
+            )
+
+        render_error = render_result.get("error", "Playwright render failed")
+        effective_url, static_html, static_error = await fetch_static_html_with_fallback(
+            session,
+            page_url,
+            allow_http_fallback=allow_http_fallback,
+        )
+        if static_html:
+            return (
+                clean_html_content(
+                    static_html,
+                    page_url=effective_url,
+                    page_type=page_type,
+                    errors=[render_error],
+                    extraction_method="static_after_playwright_failed",
+                    quality_extra=_render_quality_extra(render_result),
+                ),
+                static_html,
+                effective_url,
+                "",
+            )
+        return (
+            None,
+            "",
+            effective_url,
+            f"{render_error}; static fallback failed: {static_error}",
+        )
+
+    effective_url, static_html, static_error = await fetch_static_html_with_fallback(
+        session,
+        page_url,
+        allow_http_fallback=allow_http_fallback,
+    )
+
+    if not static_html:
+        if render_mode == "auto":
+            render_result = await render_page_with_playwright(page_url)
+            if render_result.get("success"):
+                effective_url = render_result.get("final_url") or page_url
+                html = render_result.get("html", "")
+                return (
+                    clean_html_content(
+                        html,
+                        page_url=effective_url,
+                        page_type=page_type,
+                        extraction_method="playwright",
+                        quality_extra=_render_quality_extra(render_result),
+                    ),
+                    html,
+                    effective_url,
+                    "",
+                )
+            render_error = render_result.get("error", "Playwright render failed")
+            return None, "", effective_url, f"Static fetch failed: {static_error}; {render_error}"
+        return None, "", effective_url, static_error
+
+    static_page = clean_html_content(
+        static_html,
+        page_url=effective_url,
+        page_type=page_type,
+        extraction_method="static",
+    )
+
+    if render_mode == "static" or not should_render_with_browser(static_page, static_html):
+        return static_page, static_html, effective_url, ""
+
+    render_result = await render_page_with_playwright(effective_url)
+    if render_result.get("success"):
+        rendered_url = render_result.get("final_url") or effective_url
+        rendered_html = render_result.get("html", "")
+        return (
+            clean_html_content(
+                rendered_html,
+                page_url=rendered_url,
+                page_type=page_type,
+                extraction_method="playwright",
+                quality_extra=_render_quality_extra(render_result),
+            ),
+            rendered_html,
+            rendered_url,
+            "",
+        )
+
+    render_error = render_result.get("error", "Playwright render failed")
+    static_page["extraction_method"] = "static_with_playwright_failed"
+    static_page["quality"].update(_render_quality_extra(render_result))
+    _add_page_quality_error(static_page, render_error)
+    return static_page, static_html, effective_url, ""
 
 
 def discover_key_pages(html: str, base_url: str) -> List[str]:
@@ -263,12 +431,13 @@ async def scrape_website(url: str) -> Dict:
     Uses SSL context for Windows compatibility (matches notebook).
     """
     print(f"🌐 Starting smart scrape of: {url}")
+    render_mode = get_scraper_render_mode()
+    print(f"  🧭 Render mode: {render_mode}")
     
     # Normalize URL
     if not url.startswith(('http://', 'https://')):
         url = 'https://' + url
     url = url.rstrip('/')
-    original_url = url
     
     results = {
         "source_url": url,
@@ -285,27 +454,25 @@ async def scrape_website(url: str) -> Dict:
         print("  🤖 Checking robots.txt...")
         disallowed_paths = await check_robots_txt(session, url)
         
-        # Step 1: Fetch homepage with retry
+        # Step 1: Fetch/extract homepage with selected render mode
         print("  📄 Fetching homepage...")
-        _, homepage_html, homepage_error = await fetch_page_with_retry(session, url)
+        homepage_data, homepage_html, effective_homepage_url, homepage_error = await extract_page_with_render_mode(
+            session,
+            url,
+            page_type="homepage",
+            allow_http_fallback=True,
+        )
+        if effective_homepage_url != url:
+            url = effective_homepage_url.rstrip("/")
+            results["source_url"] = url
 
-        # Fallback: if HTTPS failed, try HTTP (some sites block/redirect HTTPS)
-        if not homepage_html and original_url.startswith("https://"):
-            fallback_url = "http://" + original_url[len("https://"):]
-            print(f"  🔁 HTTPS fetch failed, retrying with HTTP: {fallback_url}")
-            _, homepage_html, homepage_error = await fetch_page_with_retry(session, fallback_url)
-            if homepage_html:
-                url = fallback_url.rstrip('/')
-                results["source_url"] = url
-        
-        if not homepage_html:
+        if not homepage_data or not homepage_html:
             error_msg = f"Failed to fetch homepage: {homepage_error}"
             print(f"  ❌ {error_msg}")
             results["errors"].append(error_msg)
             return results
         
-        # Step 2: Clean and extract homepage content
-        homepage_data = clean_html_content(homepage_html, page_url=url, page_type="homepage")
+        # Step 2: Store homepage content
         results["pages"].append(homepage_data)
         print(f"  ✅ Homepage: {homepage_data['title'][:50] if homepage_data['title'] else 'No title'}")
         
@@ -342,23 +509,25 @@ async def scrape_website(url: str) -> Dict:
             print("  ⚡ Scraping pages (with polite delays)...")
             
             # Process in small batches to be polite
-            batch_size = 3
+            batch_size = 1 if render_mode == "browser" else 3
             for i in range(0, len(key_pages), batch_size):
                 batch = key_pages[i:i + batch_size]
-                tasks = [fetch_page_with_retry(session, page_url) for page_url in batch]
+                tasks = [
+                    extract_page_with_render_mode(
+                        session,
+                        page_url,
+                        page_type=classify_page_type(page_url),
+                    )
+                    for page_url in batch
+                ]
                 page_results = await asyncio.gather(*tasks)
                 
-                for page_url, page_html, error in page_results:
-                    if page_html:
-                        page_data = clean_html_content(
-                            page_html,
-                            page_url=page_url,
-                            page_type=classify_page_type(page_url),
-                        )
+                for page_data, _, effective_page_url, error in page_results:
+                    if page_data:
                         results["pages"].append(page_data)
-                        print(f"    ✅ {page_url.split('/')[-1] or 'page'}: {page_data['title'][:30] if page_data['title'] else 'No title'}")
+                        print(f"    ✅ {effective_page_url.split('/')[-1] or 'page'}: {page_data['title'][:30] if page_data['title'] else 'No title'}")
                     elif error:
-                        results["errors"].append(f"{page_url}: {error}")
+                        results["errors"].append(f"{effective_page_url}: {error}")
                 
                 # Polite delay between batches
                 if i + batch_size < len(key_pages):
@@ -983,7 +1152,7 @@ def build_error_status(error_type: str, details: str = "") -> str:
     error_messages = {
         "invalid_url": "❌ **Invalid URL**\n\nPlease enter a valid website URL (e.g., https://example.com)",
         "connection_failed": f"❌ **Connection Failed**\n\nCouldn't connect to the website. Please check:\n- The URL is correct\n- The website is online\n- Your internet connection\n\n{details}",
-        "scrape_failed": f"❌ **Scraping Failed**\n\nCouldn't extract content from this website.\n\nPossible reasons:\n- Website blocks automated access\n- JavaScript-heavy site (not fully supported)\n- robots.txt restrictions\n\n{details}",
+        "scrape_failed": f"❌ **Scraping Failed**\n\nCouldn't extract content from this website.\n\nPossible reasons:\n- Website blocks automated access\n- Browser rendering failed or is not installed\n- Login, CAPTCHA, or private content restrictions\n- robots.txt restrictions\n\n{details}",
         "api_error": f"❌ **API Error**\n\nAn error occurred while processing.\n\n{details}\n\nPlease try again.",
         "timeout": "❌ **Timeout**\n\nThe request took too long. The website might be slow or unresponsive.\n\nTry again or use a different URL.",
     }

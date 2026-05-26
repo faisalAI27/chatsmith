@@ -565,13 +565,19 @@ def extract_static_page(
     page_type: str = "other",
     status_code: int = 200,
     errors: List[str] | None = None,
+    extraction_method: str = "static",
+    quality_extra: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     """Extract a static HTML page into the scraper v2 page schema."""
     if not html:
+        quality = create_quality_record(status_code=status_code, errors=errors or [])
+        if quality_extra:
+            quality.update({key: value for key, value in quality_extra.items() if value not in (None, "")})
         return create_page_record(
             page_url=page_url,
             page_type=page_type,
-            quality=create_quality_record(status_code=status_code, errors=errors or []),
+            extraction_method=extraction_method,
+            quality=quality,
         )
 
     soup = _copy_soup(html)
@@ -597,13 +603,15 @@ def extract_static_page(
         status_code=status_code,
         errors=errors or [],
     )
+    if quality_extra:
+        quality.update({key: value for key, value in quality_extra.items() if value not in (None, "")})
 
     return create_page_record(
         page_url=page_url,
         page_type=page_type,
         title=page_metadata["title"],
         description=page_metadata["description"],
-        extraction_method="static",
+        extraction_method=extraction_method,
         headings=headings,
         sections=sections,
         paragraphs=paragraphs,

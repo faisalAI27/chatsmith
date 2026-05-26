@@ -5,6 +5,7 @@ An intelligent AI system that automatically generates chatbots from any website 
 ## ✨ Features (current stack)
 
 - **Smart Website Scraping** - Directly extracts content from websites (PRIMARY SOURCE)
+- **Browser Rendering Support** - Uses Playwright for public JavaScript-rendered websites when needed
 - **Intelligent Gap Detection** - Only runs web searches when necessary
 - **JSON Knowledge Caching** - Instant load for previously processed websites
 - **Polite Scraping** - Respects robots.txt, rate limiting, retry logic
@@ -18,7 +19,8 @@ An intelligent AI system that automatically generates chatbots from any website 
    - Parallel page discovery and fetching
    - Respects robots.txt and rate limits
    - Retry logic with exponential backoff
-   - Extracts and cleans HTML content
+   - Extracts and cleans static or browser-rendered HTML content
+   - Supports static, browser, and auto render modes
 
 2. **Gap Detection Agent**
    - Analyzes extracted content completeness
@@ -59,12 +61,38 @@ URL → Check Cache → [If cached: Load instantly]
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+python -m playwright install chromium
 
 export OPENAI_API_KEY=your_openai_api_key_here
 export CORS_ALLOW_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+export SCRAPER_RENDER_MODE=auto
 
 uvicorn backend.app.main:app --reload --port 8000
 ```
+
+On Linux/CI, Playwright may need system browser dependencies:
+
+```bash
+python -m playwright install --with-deps chromium
+```
+
+Playwright/Chromium is required for JavaScript-rendered public websites. Static HTML websites can still be scraped through normal HTML extraction.
+
+### Scraper render modes
+
+- `SCRAPER_RENDER_MODE=auto` - default. Fetch static HTML first, then use Playwright only when static extraction looks weak.
+- `SCRAPER_RENDER_MODE=browser` - use Playwright for every selected page, with static fallback if rendering fails.
+- `SCRAPER_RENDER_MODE=static` - use only static HTML fetching; useful for tests/debugging.
+
+Optional Playwright settings:
+
+```bash
+export PLAYWRIGHT_TIMEOUT_MS=15000
+export PLAYWRIGHT_WAIT_MS=1000
+export PLAYWRIGHT_BLOCK_HEAVY_RESOURCES=true
+```
+
+Limits: ChatSMITH is intended for public website content. It does not bypass login-protected pages, CAPTCHAs, private dashboards, paid content, or strong anti-bot protections.
 
 ### Frontend (Vite React)
 Requires Node ^20.19.0 or >=22.12.0 for Vite 7.
