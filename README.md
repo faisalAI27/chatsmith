@@ -6,6 +6,7 @@ An intelligent AI system that automatically generates chatbots from any website 
 
 - **Smart Website Scraping** - Directly extracts content from websites (PRIMARY SOURCE)
 - **Browser Rendering Support** - Uses Playwright for public JavaScript-rendered websites when needed
+- **Vector Indexing Foundation** - Chunks knowledge JSON and indexes embeddings in local ChromaDB for future RAG
 - **Intelligent Gap Detection** - Only runs web searches when necessary
 - **JSON Knowledge Caching** - Instant load for previously processed websites
 - **Polite Scraping** - Respects robots.txt, rate limiting, retry logic
@@ -37,7 +38,14 @@ An intelligent AI system that automatically generates chatbots from any website 
    - URL-based caching (instant reload)
    - Source attribution (primary vs secondary)
 
-5. **Chatbot Generator**
+5. **Chunking + Vector Indexing Foundation**
+   - Converts v2 knowledge JSON into RAG-ready chunks
+   - Embeds chunks with OpenAI embeddings
+   - Stores vectors in persistent local ChromaDB at `backend/vector_store/chroma/`
+   - Retrieval is filtered by `website_id`
+   - Current chat API is not yet converted to RAG
+
+6. **Chatbot Generator**
    - GPT-4o-mini powered responses
    - Priority: Homepage > Key pages > Blog > Web search
    - Context-aware answers
@@ -51,6 +59,7 @@ URL → Check Cache → [If cached: Load instantly]
                      → Analyze Gaps
                      → Optional Web Search (SECONDARY)
                      → Save to JSON Cache
+                     → Chunk + Vector Index (best effort)
                      → Generate Chatbot
 ```
 
@@ -91,6 +100,22 @@ PLAYWRIGHT_WAIT_MS=1000
 PLAYWRIGHT_BLOCK_HEAVY_RESOURCES=true
 ```
 
+Vector DB and embedding settings:
+
+```dotenv
+VECTOR_DB_PROVIDER=chroma
+CHROMA_DB_DIR=backend/vector_store/chroma
+CHROMA_COLLECTION_NAME=website_chunks
+
+EMBEDDING_PROVIDER=openai
+EMBEDDING_MODEL=text-embedding-3-small
+EMBEDDING_BATCH_SIZE=64
+
+RETRIEVAL_TOP_K=5
+```
+
+`backend/vector_store/` is generated runtime data and is ignored by Git. If vector indexing fails during development, website generation still completes through the existing system-prompt chatbot flow and exposes the indexing warning in job stats.
+
 Limits: ChatSMITH is intended for public website content. It does not bypass login-protected pages, CAPTCHAs, private dashboards, paid content, or strong anti-bot protections.
 
 ### Frontend (Vite React)
@@ -108,6 +133,33 @@ npm run dev   # opens on http://localhost:5173
 ### Optional metrics (feature-flagged)
 - Set `ENABLE_METRICS_LOGGING=true` in your environment to capture Time-to-Chatbot-Ready (TCR), cache hit flags, and chat Q/A JSONL logs (`metrics_logs/chat_answers.jsonl`). Disabled by default to avoid any impact on existing flows.
 
+### Manual vector indexing/retrieval check
+
+Use this after a knowledge JSON exists in `backend/knowledge_files/`:
+
+```bash
+python - <<'PY'
+from pathlib import Path
+from backend.app.services.indexing_service import index_knowledge_file
+from backend.app.services.retrieval_service import retrieve_relevant_chunks
+
+path = Path("backend/knowledge_files/example.json")
+summary = index_knowledge_file(path)
+print(summary)
+
+results = retrieve_relevant_chunks(
+    summary["website_id"],
+    "What services does this website offer?",
+    top_k=5,
+)
+for result in results:
+    print(result["chunk_type"], result["page_title"], result["source_url"])
+    print(result["text"][:300])
+PY
+```
+
+This command uses OpenAI embeddings, so `OPENAI_API_KEY` must be set in `.env`. It indexes and searches chunks only; `/api/chat` still uses the existing generated system prompt.
+
 ### Usage
 - Generate chatbot: paste URL, optional Force refresh → Run. A brief summary (pages scraped, web searches) shows, then the chatbot appears.
 - Ask questions in the chat panel after generation completes.
@@ -118,6 +170,7 @@ npm run dev   # opens on http://localhost:5173
 backend/            # FastAPI app and pipeline copy
 frontend/           # Vite React UI (run, chat)
 backend/knowledge_files/ # Cached knowledge JSONs (used by backend pipeline)
+backend/vector_store/    # Generated Chroma vector DB files (ignored)
 requirements.txt    # Backend dependencies
 README.md           # This file
 ```

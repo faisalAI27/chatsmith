@@ -14,6 +14,13 @@ class Settings(BaseSettings):
     playwright_timeout_ms: int = 15000
     playwright_wait_ms: int = 1000
     playwright_block_heavy_resources: bool = True
+    vector_db_provider: str = "chroma"
+    chroma_db_dir: str = "backend/vector_store/chroma"
+    chroma_collection_name: str = "website_chunks"
+    embedding_provider: str = "openai"
+    embedding_model: str = "text-embedding-3-small"
+    embedding_batch_size: int = 64
+    retrieval_top_k: int = 5
     redis_url: str = "redis://localhost:6379/0"
     environment: str = "dev"
 

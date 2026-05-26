@@ -30,6 +30,14 @@ async def run_job(body: JobCreate) -> JobStatus:
             "tcr_seconds": stats.get("tcr_seconds", 0.0),
             "cache_hit": bool(stats.get("cache_hit", False)),
         }
+        for key in (
+            "chunk_count",
+            "vector_indexed",
+            "vector_indexing_summary",
+            "vector_indexing_warning",
+        ):
+            if key in stats:
+                stats_out[key] = stats[key]
         if ENABLE_METRICS:
             try:
                 log_job_metrics(
