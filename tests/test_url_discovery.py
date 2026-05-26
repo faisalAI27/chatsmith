@@ -1,13 +1,19 @@
 from backend.app.services.url_discovery import (
+    classify_crawl_intent,
     classify_page_type,
     discover_candidate_urls,
+    discover_candidate_urls_with_stats,
     extract_sitemap_urls_from_robots,
+    is_utility_or_meta_url,
     is_valid_crawl_url,
     normalize_discovered_url,
     parse_sitemap_xml,
     score_url_priority,
     select_candidate_urls,
 )
+
+
+WIKIPEDIA_MARCUS_URL = "https://en.wikipedia.org/wiki/Marcus_Aurelius"
 
 
 def test_extract_sitemap_urls_from_robots_supports_multiple_entries():
@@ -96,6 +102,13 @@ def test_root_query_url_is_not_classified_as_homepage():
     assert classify_page_type("https://example.com/?search=nasa") == "search_result"
 
 
+def test_classify_crawl_intent_for_homepage_and_specific_page_urls():
+    assert classify_crawl_intent("https://www.pakwheels.com/") == "homepage_site_crawl"
+    assert classify_crawl_intent("https://example.com") == "homepage_site_crawl"
+    assert classify_crawl_intent(WIKIPEDIA_MARCUS_URL) == "specific_page_crawl"
+    assert classify_crawl_intent("https://example.com/blog/article-name") == "specific_page_crawl"
+
+
 def test_search_query_urls_are_filtered_from_crawl_candidates():
     base_domain = "example.com"
 
@@ -181,6 +194,82 @@ def test_select_candidate_urls_skips_nasa_style_search_result_urls():
     ]
 
 
+def test_specific_page_selection_keeps_original_url_first():
+    selected = select_candidate_urls(
+        base_url=WIKIPEDIA_MARCUS_URL,
+        urls=[
+            "https://en.wikipedia.org/wiki/Stoicism",
+            "https://en.wikipedia.org/wiki/Help:Contents",
+            "https://en.wikipedia.org/wiki/Antoninus_Pius",
+        ],
+        max_pages=4,
+    )
+
+    assert selected[0] == WIKIPEDIA_MARCUS_URL
+    assert "https://en.wikipedia.org/wiki/Help:Contents" not in selected
+
+
+def test_wikipedia_meta_namespaces_are_utility_for_normal_article_crawl():
+    utility_urls = [
+        "https://en.wikipedia.org/wiki/Help:Authority_control",
+        "https://en.wikipedia.org/wiki/Category:Roman_emperors",
+        "https://en.wikipedia.org/wiki/File:Marcus_Aurelius.jpg",
+        "https://en.wikipedia.org/wiki/Talk:Marcus_Aurelius",
+        "https://en.wikipedia.org/wiki/Special:Random",
+        "https://en.wikipedia.org/wiki/Wikipedia:About",
+        "https://en.wikipedia.org/wiki/Template:Roman_emperors",
+        "https://en.wikipedia.org/wiki/Portal:Ancient_Rome",
+    ]
+
+    assert all(
+        is_utility_or_meta_url(url, WIKIPEDIA_MARCUS_URL, "specific_page_crawl")
+        for url in utility_urls
+    )
+
+
+def test_specific_page_selection_filters_wikipedia_help_and_category_pages():
+    selected = select_candidate_urls(
+        base_url=WIKIPEDIA_MARCUS_URL,
+        urls=[
+            "https://en.wikipedia.org/wiki/Help:Authority_control",
+            "https://en.wikipedia.org/wiki/Help:Category",
+            "https://en.wikipedia.org/wiki/Help:IPA/English",
+            "https://en.wikipedia.org/wiki/Wikipedia:Contact_us",
+            "https://en.wikipedia.org/wiki/Category:Marcus_Aurelius",
+            "https://en.wikipedia.org/wiki/Stoicism",
+            "https://en.wikipedia.org/wiki/Roman_emperor",
+        ],
+        max_pages=5,
+    )
+
+    assert selected == [
+        WIKIPEDIA_MARCUS_URL,
+        "https://en.wikipedia.org/wiki/Roman_emperor",
+        "https://en.wikipedia.org/wiki/Stoicism",
+    ]
+
+
+def test_specific_page_selection_does_not_choose_site_utility_pages_over_articles():
+    selected = select_candidate_urls(
+        base_url="https://example.com/blog/marcus-aurelius",
+        urls=[
+            "https://example.com/contact",
+            "https://example.com/about",
+            "https://example.com/help",
+            "https://example.com/privacy",
+            "https://example.com/blog/marcus-aurelius-quotes",
+            "https://example.com/blog/stoicism",
+        ],
+        max_pages=5,
+    )
+
+    assert selected == [
+        "https://example.com/blog/marcus-aurelius",
+        "https://example.com/blog/marcus-aurelius-quotes",
+        "https://example.com/blog/stoicism",
+    ]
+
+
 def test_discover_candidate_urls_combines_homepage_links_and_sitemap_urls():
     html = """
     <a href="/contact">Contact</a>
@@ -206,3 +295,39 @@ def test_discover_candidate_urls_combines_homepage_links_and_sitemap_urls():
         "https://example.com/services",
         "https://example.com/blog",
     ]
+
+
+def test_homepage_crawl_still_keeps_business_utility_pages():
+    selected = discover_candidate_urls(
+        homepage_html="""
+        <a href="/about-us">About</a>
+        <a href="/used-cars">Used Cars</a>
+        <a href="/new-cars">New Cars</a>
+        <a href="/contact-us">Contact</a>
+        """,
+        base_url="https://www.pakwheels.com/",
+        sitemap_urls=[],
+        max_pages=4,
+    )
+
+    assert "https://www.pakwheels.com/about-us" in selected
+    assert "https://www.pakwheels.com/contact-us" in selected
+    assert "https://www.pakwheels.com/used-cars" in selected
+
+
+def test_specific_discovery_stats_count_filtered_utility_urls():
+    stats = discover_candidate_urls_with_stats(
+        homepage_html="""
+        <a href="/wiki/Help:Contents">Help</a>
+        <a href="/wiki/Wikipedia:About">About Wikipedia</a>
+        <a href="/wiki/Stoicism">Stoicism</a>
+        """,
+        base_url=WIKIPEDIA_MARCUS_URL,
+        sitemap_urls=[],
+        max_pages=5,
+    )
+
+    assert stats["crawl_intent"] == "specific_page_crawl"
+    assert stats["selected_urls"][0] == WIKIPEDIA_MARCUS_URL
+    assert stats["utility_filtered_count"] == 2
+    assert "https://en.wikipedia.org/wiki/Stoicism" in stats["selected_urls"]
