@@ -11,6 +11,7 @@ pydantic-settings==2.11.0
 # OpenAI + agent stack
 openai==2.9.0
 openai-agents==0.6.2
+chromadb==1.0.20
 
 # Scraping & parsing
 aiohttp==3.13.2

@@ -71,6 +71,39 @@ async def _maybe_await(value):
         return await value
     return value
 
+
+def _index_knowledge_best_effort(
+    knowledge: Dict,
+    stats: Dict,
+    force_reindex: bool,
+) -> None:
+    """Index chunks for future RAG without blocking the current chatbot flow."""
+    try:
+        from .indexing_service import index_knowledge
+
+        summary = index_knowledge(knowledge, force_reindex=force_reindex)
+        stats["chunk_count"] = summary.get("chunks_built", 0)
+        stats["vector_indexed"] = bool(
+            summary.get("chunks_indexed", 0) and not summary.get("errors")
+        )
+        stats["vector_indexing_summary"] = summary
+        if summary.get("errors"):
+            stats["vector_indexing_warning"] = "; ".join(summary["errors"])
+            print(f"⚠️ Vector indexing skipped: {stats['vector_indexing_warning']}")
+    except Exception as exc:
+        stats["chunk_count"] = 0
+        stats["vector_indexed"] = False
+        stats["vector_indexing_summary"] = {
+            "website_id": "",
+            "chunks_built": 0,
+            "chunks_indexed": 0,
+            "chunks_deleted": 0,
+            "by_type": {},
+            "errors": [str(exc)],
+        }
+        stats["vector_indexing_warning"] = str(exc)
+        print(f"⚠️ Vector indexing skipped: {exc}")
+
 # Create SSL context with certifi certificates (matches notebook behavior)
 SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 
@@ -1203,6 +1236,7 @@ async def run_full_research_new(url: str, force_refresh: bool = False, progress=
             # Extract name from cached data
             raw_name = cached_knowledge.get("metadata", {}).get("name", "the site")
             stats["pages_scraped"] = cached_knowledge.get("metadata", {}).get("pages_scraped", 0)
+            _index_knowledge_best_effort(cached_knowledge, stats, force_reindex=False)
             
             chatbot_context = knowledge_to_chatbot_context(cached_knowledge)
             
@@ -1346,6 +1380,8 @@ RULES:
     except Exception as e:
         print(f"⚠️ Could not save cache: {e}")
         errors.append(f"Cache save failed: {str(e)[:30]}")
+
+    _index_knowledge_best_effort(knowledge, stats, force_reindex=True)
     
     # ===== Step 5: Prepare Chatbot =====
     progress(0.90, desc="Preparing chatbot...")
