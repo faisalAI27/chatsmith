@@ -1,8 +1,8 @@
 import re
 import xml.etree.ElementTree as ET
 from collections import deque
-from typing import Dict, Iterable, List
-from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
+from typing import Any, Dict, Iterable, List
+from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse, unquote
 
 import aiohttp
 from bs4 import BeautifulSoup
@@ -38,6 +38,8 @@ LOW_PRIORITY_KEYWORDS = {
     "tag",
     "terms",
 }
+CRAWL_INTENT_HOMEPAGE = "homepage_site_crawl"
+CRAWL_INTENT_SPECIFIC = "specific_page_crawl"
 SEARCH_QUERY_KEYS = {
     "keyword",
     "q",
@@ -63,6 +65,72 @@ SKIP_PATH_KEYWORDS = {
     "register",
     "signin",
     "signup",
+}
+SPECIFIC_PAGE_UTILITY_SEGMENTS = {
+    "about",
+    "account",
+    "admin",
+    "archive",
+    "archives",
+    "cart",
+    "category",
+    "checkout",
+    "contact",
+    "contact-us",
+    "help",
+    "legal",
+    "login",
+    "privacy",
+    "register",
+    "signin",
+    "signup",
+    "special",
+    "tag",
+    "tags",
+    "terms",
+}
+SPECIFIC_PAGE_UTILITY_TOKEN_GROUPS = (
+    {"authority", "control"},
+    {"pronunciation"},
+    {"language"},
+    {"languages"},
+    {"ipa"},
+)
+WIKI_META_NAMESPACES = {
+    "category",
+    "file",
+    "help",
+    "portal",
+    "special",
+    "talk",
+    "template",
+    "wikipedia",
+}
+MEANINGFUL_TOKEN_STOPWORDS = {
+    "a",
+    "an",
+    "and",
+    "article",
+    "articles",
+    "blog",
+    "com",
+    "doc",
+    "docs",
+    "documentation",
+    "en",
+    "home",
+    "html",
+    "htm",
+    "index",
+    "main",
+    "of",
+    "org",
+    "page",
+    "pages",
+    "the",
+    "to",
+    "wiki",
+    "www",
 }
 DOWNLOAD_EXTENSIONS = {
     ".avi",
@@ -147,6 +215,45 @@ def _is_root_path(parsed_url) -> bool:
     return not parsed_url.path or parsed_url.path == "/"
 
 
+def _text_tokens(text: str) -> set[str]:
+    tokens = re.findall(r"[a-z0-9]+", (text or "").lower())
+    return {token for token in tokens if len(token) > 1 and token not in MEANINGFUL_TOKEN_STOPWORDS}
+
+
+def _meaningful_url_tokens(url: str) -> set[str]:
+    parsed = urlparse(url)
+    decoded_path = unquote(parsed.path or "")
+    return _text_tokens(decoded_path.replace("/", " ").replace("_", " ").replace("-", " "))
+
+
+def _wiki_title(url: str) -> str:
+    parsed = urlparse(url)
+    segments = [segment for segment in (parsed.path or "").split("/") if segment]
+    if len(segments) < 2 or segments[0].lower() != "wiki":
+        return ""
+    return unquote("/".join(segments[1:]))
+
+
+def _is_wiki_namespace_url(url: str) -> bool:
+    title = _wiki_title(url).lower()
+    return any(title.startswith(f"{namespace}:") for namespace in WIKI_META_NAMESPACES)
+
+
+def _is_wiki_content_url(url: str) -> bool:
+    parsed = urlparse(url)
+    segments = [segment for segment in (parsed.path or "").split("/") if segment]
+    return len(segments) >= 2 and segments[0].lower() == "wiki" and not _is_wiki_namespace_url(url)
+
+
+def classify_crawl_intent(url: str) -> str:
+    """Classify whether the input URL asks for a whole-site or specific-page crawl."""
+    normalized_url = normalize_discovered_url(url)
+    parsed = urlparse(normalized_url)
+    if _is_root_path(parsed):
+        return CRAWL_INTENT_HOMEPAGE
+    return CRAWL_INTENT_SPECIFIC
+
+
 def normalize_discovered_url(url: str) -> str:
     """Normalize a crawl candidate while preserving meaningful path/query identity."""
     raw_url = (url or "").strip()
@@ -210,6 +317,42 @@ def is_valid_crawl_url(url: str, base_domain: str) -> bool:
     return True
 
 
+def is_utility_or_meta_url(
+    url: str,
+    base_url: str = "",
+    crawl_intent: str | None = None,
+) -> bool:
+    """Return True for low-value utility/meta URLs during a specific-page crawl."""
+    intent = crawl_intent or classify_crawl_intent(base_url)
+    if intent != CRAWL_INTENT_SPECIFIC:
+        return False
+
+    normalized_url = normalize_discovered_url(url)
+    normalized_base = normalize_discovered_url(base_url)
+    if normalized_url == normalized_base:
+        return False
+
+    base_is_wiki_meta = _is_wiki_namespace_url(normalized_base)
+    if _is_wiki_namespace_url(normalized_url) and not base_is_wiki_meta:
+        return True
+
+    parsed = urlparse(normalized_url)
+    segments = _path_segments(parsed.path)
+    tokens = _meaningful_url_tokens(normalized_url)
+    page_type = classify_page_type(normalized_url)
+
+    if page_type in {"about", "contact", "legal"}:
+        return True
+    if any(segment in SPECIFIC_PAGE_UTILITY_SEGMENTS for segment in segments):
+        return True
+    if tokens & SPECIFIC_PAGE_UTILITY_SEGMENTS:
+        return True
+    if any(token_group <= tokens for token_group in SPECIFIC_PAGE_UTILITY_TOKEN_GROUPS):
+        return True
+
+    return False
+
+
 def classify_page_type(url: str) -> str:
     """Classify a URL into a coarse page type for extraction metadata."""
     parsed = urlparse(url)
@@ -242,6 +385,8 @@ def classify_page_type(url: str) -> str:
         return "careers"
     if {"privacy", "terms", "legal"} & tokens:
         return "legal"
+    if _is_wiki_namespace_url(url):
+        return "wiki_meta"
     return "other"
 
 
@@ -270,6 +415,41 @@ def score_url_priority(url: str) -> int:
         score -= 200
     if page_type == "search_result":
         score -= 300
+    return max(0, score)
+
+
+def score_specific_url_priority(url: str, base_url: str, anchor_text: str = "") -> int:
+    """Score related URLs for a specific article/content-page crawl."""
+    normalized_url = normalize_discovered_url(url)
+    normalized_base = normalize_discovered_url(base_url)
+    if normalized_url == normalized_base:
+        return 10000
+    if is_utility_or_meta_url(normalized_url, normalized_base, CRAWL_INTENT_SPECIFIC):
+        return 0
+
+    parsed_url = urlparse(normalized_url)
+    parsed_base = urlparse(normalized_base)
+    base_tokens = _meaningful_url_tokens(normalized_base)
+    candidate_tokens = _meaningful_url_tokens(normalized_url)
+    anchor_tokens = _text_tokens(anchor_text)
+    overlap = base_tokens & (candidate_tokens | anchor_tokens)
+
+    score = 150 + len(overlap) * 300
+    base_segments = _path_segments(parsed_base.path)
+    candidate_segments = _path_segments(parsed_url.path)
+    if base_segments and candidate_segments and base_segments[0] == candidate_segments[0]:
+        score += 150
+    if _is_wiki_content_url(normalized_url):
+        score += 150
+    if classify_page_type(normalized_url) in {"docs", "blog"}:
+        score += 100
+    if parsed_url.query:
+        score -= 150
+    if len(candidate_tokens) <= 1:
+        score -= 50
+
+    depth = len(candidate_segments)
+    score += max(0, 20 - depth * 3)
     return max(0, score)
 
 
@@ -370,12 +550,12 @@ async def fetch_sitemap_urls(
     return urls
 
 
-def extract_homepage_links(homepage_html: str, base_url: str) -> List[str]:
-    """Extract normalized same-page candidates from homepage anchors."""
+def extract_homepage_link_records(homepage_html: str, base_url: str) -> List[Dict[str, str]]:
+    """Extract normalized same-page candidates with anchor text for relevance scoring."""
     if not homepage_html:
         return []
     soup = BeautifulSoup(homepage_html, "lxml")
-    links = []
+    link_records = []
     seen = set()
     for anchor in soup.find_all("a", href=True):
         href = anchor.get("href", "").strip()
@@ -384,38 +564,117 @@ def extract_homepage_links(homepage_html: str, base_url: str) -> List[str]:
         normalized_url = normalize_discovered_url(urljoin(base_url, href))
         if normalized_url and normalized_url not in seen:
             seen.add(normalized_url)
-            links.append(normalized_url)
-    return links
+            link_records.append({
+                "url": normalized_url,
+                "anchor_text": anchor.get_text(" ", strip=True),
+            })
+    return link_records
+
+
+def extract_homepage_links(homepage_html: str, base_url: str) -> List[str]:
+    """Extract normalized same-page candidates from homepage anchors."""
+    return [record["url"] for record in extract_homepage_link_records(homepage_html, base_url)]
+
+
+def _candidate_url_and_anchor(candidate: Any) -> tuple[str, str]:
+    if isinstance(candidate, dict):
+        return (
+            str(candidate.get("url") or candidate.get("href") or ""),
+            str(candidate.get("anchor_text") or candidate.get("text") or ""),
+        )
+    return str(candidate or ""), ""
+
+
+def select_candidate_urls_with_stats(
+    base_url: str,
+    urls: Iterable[Any],
+    max_pages: int,
+    include_homepage: bool = False,
+) -> Dict[str, Any]:
+    """Normalize, filter, deduplicate, rank, limit, and return selection counters."""
+    base = normalize_discovered_url(base_url)
+    base_domain = urlparse(base).netloc
+    crawl_intent = classify_crawl_intent(base)
+    include_base = include_homepage or crawl_intent == CRAWL_INTENT_SPECIFIC
+    seen = set()
+    scored = []
+    filtered_count = 0
+    utility_filtered_count = 0
+
+    if include_base and base:
+        seen.add(base)
+        base_score = 10000 if crawl_intent == CRAWL_INTENT_SPECIFIC else score_url_priority(base)
+        scored.append((base_score, 0, base))
+
+    for candidate in urls:
+        raw_url, anchor_text = _candidate_url_and_anchor(candidate)
+        normalized_url = normalize_discovered_url(raw_url)
+        if not normalized_url:
+            filtered_count += 1
+            continue
+        if normalized_url == base:
+            continue
+        if not is_valid_crawl_url(normalized_url, base_domain):
+            filtered_count += 1
+            continue
+        if normalized_url in seen:
+            continue
+
+        if is_utility_or_meta_url(normalized_url, base, crawl_intent):
+            filtered_count += 1
+            utility_filtered_count += 1
+            continue
+
+        seen.add(normalized_url)
+        depth = len([part for part in urlparse(normalized_url).path.split("/") if part])
+        if crawl_intent == CRAWL_INTENT_SPECIFIC:
+            score = score_specific_url_priority(normalized_url, base, anchor_text=anchor_text)
+        else:
+            score = score_url_priority(normalized_url)
+        scored.append((score, -depth, normalized_url))
+
+    scored.sort(key=lambda item: (-item[0], -item[1], item[2]))
+    selected_urls = [url for _, _, url in scored[:max_pages]]
+    return {
+        "selected_urls": selected_urls,
+        "crawl_intent": crawl_intent,
+        "filtered_count": filtered_count,
+        "utility_filtered_count": utility_filtered_count,
+        "candidate_count": len(seen) + filtered_count,
+    }
 
 
 def select_candidate_urls(
     base_url: str,
-    urls: Iterable[str],
+    urls: Iterable[Any],
     max_pages: int,
     include_homepage: bool = False,
 ) -> List[str]:
     """Normalize, filter, deduplicate, rank, and limit crawl candidates."""
-    base = normalize_discovered_url(base_url)
-    base_domain = urlparse(base).netloc
-    seen = set()
-    scored = []
+    return select_candidate_urls_with_stats(
+        base_url=base_url,
+        urls=urls,
+        max_pages=max_pages,
+        include_homepage=include_homepage,
+    )["selected_urls"]
 
-    for url in urls:
-        normalized_url = normalize_discovered_url(url)
-        if not normalized_url:
-            continue
-        if normalized_url == base and not include_homepage:
-            continue
-        if not is_valid_crawl_url(normalized_url, base_domain):
-            continue
-        if normalized_url in seen:
-            continue
-        seen.add(normalized_url)
-        depth = len([part for part in urlparse(normalized_url).path.split("/") if part])
-        scored.append((score_url_priority(normalized_url), -depth, normalized_url))
 
-    scored.sort(key=lambda item: (-item[0], -item[1], item[2]))
-    return [url for _, _, url in scored[:max_pages]]
+def discover_candidate_urls_with_stats(
+    homepage_html: str,
+    base_url: str,
+    sitemap_urls: Iterable[str] | None = None,
+    max_pages: int = 10,
+    include_homepage: bool = False,
+) -> Dict[str, Any]:
+    """Discover final candidate URLs and selection counters."""
+    candidates: List[Any] = extract_homepage_link_records(homepage_html, base_url)
+    candidates.extend(sitemap_urls or [])
+    return select_candidate_urls_with_stats(
+        base_url=base_url,
+        urls=candidates,
+        max_pages=max_pages,
+        include_homepage=include_homepage,
+    )
 
 
 def discover_candidate_urls(
@@ -426,11 +685,10 @@ def discover_candidate_urls(
     include_homepage: bool = False,
 ) -> List[str]:
     """Discover final candidate URLs from homepage links plus sitemap URLs."""
-    candidates = extract_homepage_links(homepage_html, base_url)
-    candidates.extend(sitemap_urls or [])
-    return select_candidate_urls(
+    return discover_candidate_urls_with_stats(
         base_url=base_url,
-        urls=candidates,
+        homepage_html=homepage_html,
+        sitemap_urls=sitemap_urls,
         max_pages=max_pages,
         include_homepage=include_homepage,
-    )
+    )["selected_urls"]

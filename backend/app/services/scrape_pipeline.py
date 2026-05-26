@@ -34,9 +34,12 @@ from .scraper_schema import (
 from .static_extractor import extract_static_page
 from .url_discovery import (
     classify_page_type,
+    classify_crawl_intent,
     discover_candidate_urls,
+    discover_candidate_urls_with_stats,
     extract_homepage_links,
     fetch_sitemap_urls,
+    normalize_discovered_url,
 )
 
 # Initialize
@@ -438,6 +441,8 @@ async def scrape_website(url: str) -> Dict:
     if not url.startswith(('http://', 'https://')):
         url = 'https://' + url
     url = url.rstrip('/')
+    crawl_intent = classify_crawl_intent(url)
+    print(f"  🎯 Crawl intent: {crawl_intent}")
     
     results = {
         "source_url": url,
@@ -459,12 +464,13 @@ async def scrape_website(url: str) -> Dict:
         homepage_data, homepage_html, effective_homepage_url, homepage_error = await extract_page_with_render_mode(
             session,
             url,
-            page_type="homepage",
+            page_type="homepage" if crawl_intent == "homepage_site_crawl" else classify_page_type(url),
             allow_http_fallback=True,
         )
         if effective_homepage_url != url:
             url = effective_homepage_url.rstrip("/")
             results["source_url"] = url
+            crawl_intent = classify_crawl_intent(url)
 
         if not homepage_data or not homepage_html:
             error_msg = f"Failed to fetch homepage: {homepage_error}"
@@ -488,12 +494,23 @@ async def scrape_website(url: str) -> Dict:
         )
         print(f"  🔗 Homepage links found: {len(homepage_links)}")
         print(f"  🗺️ Sitemap URLs found: {len(sitemap_urls)}")
-        key_pages = discover_candidate_urls(
+        max_candidates = MAX_PAGES_TO_SCRAPE
+        if crawl_intent == "homepage_site_crawl":
+            max_candidates = MAX_PAGES_TO_SCRAPE - 1
+        else:
+            max_candidates = min(MAX_PAGES_TO_SCRAPE, 5)
+        discovery_stats = discover_candidate_urls_with_stats(
             homepage_html="",
             base_url=url,
             sitemap_urls=[*homepage_links, *sitemap_urls],
-            max_pages=MAX_PAGES_TO_SCRAPE - 1,
+            max_pages=max_candidates,
         )
+        key_pages = discovery_stats["selected_urls"]
+        base_url_normalized = normalize_discovered_url(url)
+        key_pages = [page for page in key_pages if normalize_discovered_url(page) != base_url_normalized]
+        key_pages = key_pages[:MAX_PAGES_TO_SCRAPE - 1]
+        print(f"  🧹 Filtered candidates: {discovery_stats['filtered_count']}")
+        print(f"  🧹 Filtered utility/meta URLs: {discovery_stats['utility_filtered_count']}")
         
         # Filter out disallowed pages (robots.txt)
         if disallowed_paths:
@@ -503,6 +520,8 @@ async def scrape_website(url: str) -> Dict:
                 print(f"  🚫 Skipped {original_count - len(key_pages)} pages (robots.txt)")
         
         print(f"  📋 Selected {len(key_pages)} important pages to scrape")
+        for selected_url in key_pages[:5]:
+            print(f"    🔎 Selected: {selected_url}")
         
         # Step 4: Scrape key pages with rate limiting
         if key_pages:
