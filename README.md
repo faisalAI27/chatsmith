@@ -63,9 +63,8 @@ source .venv/bin/activate
 pip install -r requirements.txt
 python -m playwright install chromium
 
-export OPENAI_API_KEY=your_openai_api_key_here
-export CORS_ALLOW_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
-export SCRAPER_RENDER_MODE=auto
+cp .env.example .env
+# edit .env and set OPENAI_API_KEY
 
 uvicorn backend.app.main:app --reload --port 8000
 ```
@@ -86,10 +85,10 @@ Playwright/Chromium is required for JavaScript-rendered public websites. Static 
 
 Optional Playwright settings:
 
-```bash
-export PLAYWRIGHT_TIMEOUT_MS=15000
-export PLAYWRIGHT_WAIT_MS=1000
-export PLAYWRIGHT_BLOCK_HEAVY_RESOURCES=true
+```dotenv
+PLAYWRIGHT_TIMEOUT_MS=15000
+PLAYWRIGHT_WAIT_MS=1000
+PLAYWRIGHT_BLOCK_HEAVY_RESOURCES=true
 ```
 
 Limits: ChatSMITH is intended for public website content. It does not bypass login-protected pages, CAPTCHAs, private dashboards, paid content, or strong anti-bot protections.

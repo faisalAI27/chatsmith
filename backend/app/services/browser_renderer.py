@@ -1,9 +1,10 @@
-import os
 import re
 import time
 from typing import Any, Dict
 
 from bs4 import BeautifulSoup
+
+from ..core.config import get_settings
 
 
 VALID_RENDER_MODES = {"auto", "browser", "static"}
@@ -33,40 +34,50 @@ def _clean_text(text: str) -> str:
     return re.sub(r"\s+", " ", text or "").strip()
 
 
-def _env_int(name: str, default: int) -> int:
-    raw_value = os.getenv(name, "")
+def _settings_value(name: str, default: Any) -> Any:
     try:
-        value = int(raw_value)
+        return getattr(get_settings(), name, default)
+    except Exception:
+        return default
+
+
+def _positive_int(value: Any, default: int) -> int:
+    try:
+        parsed = int(value)
     except (TypeError, ValueError):
         return default
-    return value if value > 0 else default
-
-
-def _env_bool(name: str, default: bool) -> bool:
-    raw_value = os.getenv(name)
-    if raw_value is None:
-        return default
-    return raw_value.strip().lower() in {"1", "true", "yes", "on"}
+    return parsed if parsed > 0 else default
 
 
 def get_scraper_render_mode() -> str:
-    """Return the configured scraper render mode, falling back safely to auto."""
-    mode = (os.getenv("SCRAPER_RENDER_MODE", DEFAULT_RENDER_MODE) or "").strip().lower()
+    """Return the configured scraper render mode from backend settings."""
+    mode = str(_settings_value("scraper_render_mode", DEFAULT_RENDER_MODE) or "").strip().lower()
     if mode not in VALID_RENDER_MODES:
         return DEFAULT_RENDER_MODE
     return mode
 
 
 def get_playwright_timeout_ms() -> int:
-    return _env_int("PLAYWRIGHT_TIMEOUT_MS", DEFAULT_PLAYWRIGHT_TIMEOUT_MS)
+    return _positive_int(
+        _settings_value("playwright_timeout_ms", DEFAULT_PLAYWRIGHT_TIMEOUT_MS),
+        DEFAULT_PLAYWRIGHT_TIMEOUT_MS,
+    )
 
 
 def get_playwright_wait_ms() -> int:
-    return _env_int("PLAYWRIGHT_WAIT_MS", DEFAULT_PLAYWRIGHT_WAIT_MS)
+    return _positive_int(
+        _settings_value("playwright_wait_ms", DEFAULT_PLAYWRIGHT_WAIT_MS),
+        DEFAULT_PLAYWRIGHT_WAIT_MS,
+    )
 
 
 def should_block_heavy_resources() -> bool:
-    return _env_bool("PLAYWRIGHT_BLOCK_HEAVY_RESOURCES", DEFAULT_BLOCK_HEAVY_RESOURCES)
+    return bool(
+        _settings_value(
+            "playwright_block_heavy_resources",
+            DEFAULT_BLOCK_HEAVY_RESOURCES,
+        )
+    )
 
 
 def browser_rendering_available() -> bool:
