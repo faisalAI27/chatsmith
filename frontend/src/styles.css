@@ -227,6 +227,29 @@ button:disabled {
 }
 .chat-msg.user { border: 1px solid rgba(124,58,237,0.4); }
 .chat-msg.assistant { border: 1px solid rgba(34,211,238,0.4); }
+.sources {
+  margin-top: 8px;
+  display: grid;
+  gap: 4px;
+}
+.sources-title {
+  color: #a5f3fc;
+  font-size: 12px;
+  font-weight: 700;
+}
+.sources a,
+.sources span {
+  color: #bae6fd;
+  font-size: 12px;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.sources a:hover { text-decoration: underline; }
+.warning {
+  margin-top: 8px;
+  color: #fbbf24;
+  font-size: 12px;
+}
 .muted { color: #94a3b8; }
 .small { font-size: 12px; }
 .generate-desc { margin-top: 4px; color: #9ca3af; }

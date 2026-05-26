@@ -20,12 +20,18 @@ export default function App() {
   const [urlValue, setUrlValue] = useState("https://example.com");
   const [jobResult, setJobResult] = useState(null);
   const [systemPrompt, setSystemPrompt] = useState("");
+  const [websiteId, setWebsiteId] = useState("");
   const [siteName, setSiteName] = useState("Bot");
   const [progressValue, setProgressValue] = useState(0);
   const [progressText, setProgressText] = useState("Idle");
   const [isRunning, setIsRunning] = useState(false);
   const [summaryVisible, setSummaryVisible] = useState(false);
-  const [summaryData, setSummaryData] = useState({ pages: 0, searches: 0 });
+  const [summaryData, setSummaryData] = useState({
+    pages: 0,
+    searches: 0,
+    chunks: 0,
+    vectorIndexed: false,
+  });
   const [chatMessages, setChatMessages] = useState([]);
   const [chatStatus, setChatStatus] = useState("");
 
@@ -39,6 +45,7 @@ export default function App() {
     setStatus("Submitting job...");
     setJobResult(null);
     setSystemPrompt("");
+    setWebsiteId("");
     setChatMessages([]);
     if (chatInputRef.current) chatInputRef.current.value = "";
     setProgressValue(10);
@@ -62,6 +69,7 @@ export default function App() {
       setJobResult({ ...json, status_text: statusText });
       setStatus("Job completed.");
       setSystemPrompt(json?.stats?.system_prompt || "");
+      setWebsiteId(json?.stats?.website_id || json?.stats?.vector_indexing_summary?.website_id || "");
       setSiteName(json?.stats?.name || "Bot");
       setProgressText(statusText);
 
@@ -70,6 +78,8 @@ export default function App() {
       setSummaryData({
         pages: json?.stats?.pages_scraped ?? 0,
         searches: json?.stats?.searches_run ?? 0,
+        chunks: json?.stats?.chunk_count ?? json?.stats?.vector_indexing_summary?.chunks_built ?? 0,
+        vectorIndexed: Boolean(json?.stats?.vector_indexed),
       });
       setSummaryVisible(true);
       setTimeout(() => setSummaryVisible(false), 5000);
@@ -97,6 +107,8 @@ export default function App() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          website_id: websiteId || undefined,
+          question: text,
           system_prompt: systemPrompt,
           messages: newMessages,
         }),
@@ -109,8 +121,16 @@ export default function App() {
 
       const json = await resp.json();
       const assistantMsg = json?.message;
-      setChatMessages(assistantMsg ? [...newMessages, assistantMsg] : newMessages);
-      setChatStatus("Ready");
+      const enrichedAssistantMsg = assistantMsg
+        ? {
+            ...assistantMsg,
+            sources: json?.sources || [],
+            mode: json?.mode || "legacy_prompt",
+            warnings: json?.warnings || [],
+          }
+        : null;
+      setChatMessages(enrichedAssistantMsg ? [...newMessages, enrichedAssistantMsg] : newMessages);
+      setChatStatus(json?.mode === "rag" ? "Ready - RAG" : "Ready");
     } catch (err) {
       console.error("Chat failed", err);
       setChatStatus(`Chat failed: ${err.message}`);
@@ -171,7 +191,7 @@ export default function App() {
                 </pre>
               )}
 
-              {jobResult && systemPrompt && (
+              {jobResult && (systemPrompt || websiteId) && (
                 <>
                   <hr style={{ border: "1px solid rgba(255,255,255,0.06)" }} />
                   {summaryVisible ? (
@@ -179,6 +199,10 @@ export default function App() {
                       <h3>Summary</h3>
                       <p className="muted small">Pages scraped: {summaryData.pages}</p>
                       <p className="muted small">Web searches: {summaryData.searches}</p>
+                      <p className="muted small">Chunks indexed: {summaryData.chunks}</p>
+                      <p className="muted small">
+                        Vector index: {summaryData.vectorIndexed ? "ready" : "fallback available"}
+                      </p>
                     </div>
                   ) : (
                     <>
@@ -190,6 +214,30 @@ export default function App() {
                         {chatMessages.map((m, idx) => (
                           <div key={idx} className={`chat-msg ${m.role}`}>
                             <strong>{m.role === "user" ? "You" : siteName}:</strong> {m.content}
+                            {m.role === "assistant" && m.sources?.length ? (
+                              <div className="sources">
+                                <div className="sources-title">Sources</div>
+                                {m.sources.map((source, sourceIdx) => (
+                                  source.source_url ? (
+                                    <a
+                                      key={`${source.source_url}-${sourceIdx}`}
+                                      href={source.source_url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                    >
+                                      {source.page_title || source.source_url} - {source.chunk_type}
+                                    </a>
+                                  ) : (
+                                    <span key={`${source.page_title || "source"}-${sourceIdx}`}>
+                                      {source.page_title || "Source"} - {source.chunk_type}
+                                    </span>
+                                  )
+                                ))}
+                              </div>
+                            ) : null}
+                            {m.role === "assistant" && m.warnings?.length ? (
+                              <div className="warning">{m.warnings.join(" ")}</div>
+                            ) : null}
                           </div>
                         ))}
                       </div>

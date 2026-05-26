@@ -6,7 +6,7 @@ An intelligent AI system that automatically generates chatbots from any website 
 
 - **Smart Website Scraping** - Directly extracts content from websites (PRIMARY SOURCE)
 - **Browser Rendering Support** - Uses Playwright for public JavaScript-rendered websites when needed
-- **Vector Indexing Foundation** - Chunks knowledge JSON and indexes embeddings in local ChromaDB for future RAG
+- **Retrieval-Based Chat** - Uses `website_id` to retrieve indexed chunks and answer with sources
 - **Intelligent Gap Detection** - Only runs web searches when necessary
 - **JSON Knowledge Caching** - Instant load for previously processed websites
 - **Polite Scraping** - Respects robots.txt, rate limiting, retry logic
@@ -38,17 +38,18 @@ An intelligent AI system that automatically generates chatbots from any website 
    - URL-based caching (instant reload)
    - Source attribution (primary vs secondary)
 
-5. **Chunking + Vector Indexing Foundation**
+5. **Chunking + Vector Indexing**
    - Converts v2 knowledge JSON into RAG-ready chunks
    - Embeds chunks with OpenAI embeddings
    - Stores vectors in persistent local ChromaDB at `backend/vector_store/chroma/`
    - Retrieval is filtered by `website_id`
-   - Current chat API is not yet converted to RAG
 
-6. **Chatbot Generator**
+6. **RAG Chatbot Generator**
    - GPT-4o-mini powered responses
-   - Priority: Homepage > Key pages > Blog > Web search
-   - Context-aware answers
+   - Retrieves relevant chunks by `website_id`
+   - Builds a grounded prompt from retrieved website context
+   - Returns answer sources separately
+   - Falls back to the legacy generated system prompt if retrieval is unavailable
 
 ### Workflow
 
@@ -61,6 +62,7 @@ URL → Check Cache → [If cached: Load instantly]
                      → Save to JSON Cache
                      → Chunk + Vector Index (best effort)
                      → Generate Chatbot
+                     → Chat: website_id → retrieve chunks → answer with sources
 ```
 
 ## 🚀 Quick Start (current stack)
@@ -114,7 +116,7 @@ EMBEDDING_BATCH_SIZE=64
 RETRIEVAL_TOP_K=5
 ```
 
-`backend/vector_store/` is generated runtime data and is ignored by Git. If vector indexing fails during development, website generation still completes through the existing system-prompt chatbot flow and exposes the indexing warning in job stats.
+`backend/vector_store/` is generated runtime data and is ignored by Git. If vector indexing fails during development, website generation still completes through the legacy system-prompt fallback and exposes the indexing warning in job stats.
 
 Limits: ChatSMITH is intended for public website content. It does not bypass login-protected pages, CAPTCHAs, private dashboards, paid content, or strong anti-bot protections.
 
@@ -158,7 +160,19 @@ for result in results:
 PY
 ```
 
-This command uses OpenAI embeddings, so `OPENAI_API_KEY` must be set in `.env`. It indexes and searches chunks only; `/api/chat` still uses the existing generated system prompt.
+This command uses OpenAI embeddings, so `OPENAI_API_KEY` must be set in `.env`.
+
+### RAG chat behavior
+
+After `/api/jobs/run` completes, the job stats include `website_id`, `chunk_count`, and vector indexing status. The frontend sends `website_id` to `/api/chat`, and the backend:
+
+1. embeds the latest user question,
+2. retrieves top chunks filtered by `website_id`,
+3. builds a grounded prompt from retrieved chunks,
+4. calls the chat model,
+5. returns the answer plus source previews.
+
+If retrieval fails or no chunks are available, `/api/chat` uses the legacy `system_prompt` fallback when present. RAG answers are limited to scraped/indexed website context; the model should say when the retrieved context does not provide enough information.
 
 ### Usage
 - Generate chatbot: paste URL, optional Force refresh → Run. A brief summary (pages scraped, web searches) shows, then the chatbot appears.
