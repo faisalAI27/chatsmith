@@ -1,5 +1,6 @@
 import pytest
 
+from backend.app.core.config import get_settings
 from backend.app.services import scrape_pipeline as sp
 
 
@@ -54,6 +55,13 @@ async def _fake_fetch_factory(html: str, error: str = ""):
         return url, html, error
 
     return fake_fetch_page_with_retry
+
+
+@pytest.fixture(autouse=True)
+def clear_settings_cache():
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
 
 
 @pytest.mark.asyncio
