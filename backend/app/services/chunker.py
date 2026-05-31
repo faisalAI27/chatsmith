@@ -3,6 +3,7 @@ import json
 import re
 from collections import Counter
 from typing import Any, Dict, Iterable, List
+from urllib.parse import urlparse
 
 from .scraper_schema import ensure_v2_knowledge_shape, make_website_id, normalize_url_for_cache
 
@@ -10,6 +11,29 @@ from .scraper_schema import ensure_v2_knowledge_shape, make_website_id, normaliz
 MAX_CHUNK_WORDS = 1000
 OVERLAP_WORDS = 120
 MIN_CHUNK_WORDS = 4
+
+SOCIAL_PLATFORMS = {
+    "instagram": ("instagram.com",),
+    "facebook": ("facebook.com", "fb.com"),
+    "youtube": ("youtube.com", "youtu.be"),
+    "tiktok": ("tiktok.com",),
+    "twitter": ("twitter.com", "x.com"),
+    "linkedin": ("linkedin.com",),
+    "pinterest": ("pinterest.com",),
+    "whatsapp": ("wa.me", "whatsapp.com"),
+}
+SOCIAL_PLATFORM_LABELS = {
+    "instagram": "Instagram",
+    "facebook": "Facebook",
+    "youtube": "YouTube",
+    "tiktok": "TikTok",
+    "twitter": "Twitter/X",
+    "linkedin": "LinkedIn",
+    "pinterest": "Pinterest",
+    "whatsapp": "WhatsApp",
+}
+
+URL_RE = re.compile(r"https?://[^\s\"'<>)}\]]+", re.IGNORECASE)
 
 
 def build_chunks_from_knowledge(knowledge: dict) -> list[dict]:
@@ -30,6 +54,7 @@ def build_chunks_from_knowledge(knowledge: dict) -> list[dict]:
 
     chunks: List[Dict[str, Any]] = []
     seen_texts: set[str] = set()
+    seen_social_links: set[str] = set()
 
     for page in _pages_from_knowledge(shaped):
         if not isinstance(page, dict):
@@ -66,6 +91,7 @@ def build_chunks_from_knowledge(knowledge: dict) -> list[dict]:
         _add_faq_chunks(chunks, seen_texts, page, page_context)
         _add_table_chunks(chunks, seen_texts, page, page_context)
         _add_image_context_chunks(chunks, seen_texts, page, page_context)
+        _add_social_link_chunks(chunks, seen_texts, seen_social_links, page, page_context)
         _add_structured_data_chunks(chunks, seen_texts, page, page_context)
 
     for index, chunk in enumerate(chunks):
@@ -257,6 +283,51 @@ def _add_structured_data_chunks(
         )
 
 
+def _add_social_link_chunks(
+    chunks: List[Dict[str, Any]],
+    seen_texts: set[str],
+    seen_social_links: set[str],
+    page: Dict[str, Any],
+    page_context: Dict[str, Any],
+) -> None:
+    for social_link in _extract_social_links(page):
+        platform = social_link["platform"]
+        url = social_link["url"]
+        source_url = page_context.get("source_url", "")
+        dedupe_key = _dedupe_key("|".join([platform, url, source_url]))
+        if not dedupe_key or dedupe_key in seen_social_links:
+            continue
+        seen_social_links.add(dedupe_key)
+
+        link_text = social_link.get("link_text", "")
+        source_kind = social_link.get("source_kind", "")
+        platform_label = SOCIAL_PLATFORM_LABELS.get(platform, platform.title())
+        text = _join_labeled_text(
+            [
+                ("Social platform", platform_label),
+                ("URL", url),
+                ("Link text", link_text),
+                ("Source page", page_context.get("page_title")),
+                ("Source kind", source_kind),
+            ]
+        )
+        _add_text_chunks(
+            chunks,
+            seen_texts,
+            text=text,
+            chunk_type="social_link",
+            heading=f"{platform_label} social link",
+            page_context=page_context,
+            extra_metadata={
+                "social_platform": platform,
+                "social_url": url,
+                "link_text": link_text,
+                "source_kind": source_kind,
+            },
+            dedupe_text="|".join([platform, url, source_url]),
+        )
+
+
 def _add_text_chunks(
     chunks: List[Dict[str, Any]],
     seen_texts: set[str],
@@ -414,6 +485,89 @@ def _structured_data_to_text(record: Any) -> str:
     if isinstance(record, (dict, list)):
         return _clean_text(json.dumps(record, ensure_ascii=False, sort_keys=True))
     return ""
+
+
+def _extract_social_links(page: Dict[str, Any]) -> List[Dict[str, str]]:
+    links = []
+
+    for link in _as_list(page.get("links")):
+        if not isinstance(link, dict):
+            continue
+        url = _clean_social_url(link.get("url") or link.get("href") or link.get("absolute_url"))
+        platform = _detect_social_platform(url, link.get("text"))
+        if not platform or not url:
+            continue
+        links.append(
+            {
+                "platform": platform,
+                "url": url,
+                "link_text": _clean_text(link.get("text") or link.get("title") or platform.title()),
+                "source_kind": "page_link",
+            }
+        )
+
+    for record in _as_list(page.get("structured_data")):
+        for url in _extract_urls_from_value(record):
+            cleaned_url = _clean_social_url(url)
+            platform = _detect_social_platform(cleaned_url)
+            if not platform:
+                continue
+            links.append(
+                {
+                    "platform": platform,
+                    "url": cleaned_url,
+                    "link_text": platform.title(),
+                    "source_kind": "structured_data",
+                }
+            )
+
+    return links
+
+
+def _extract_urls_from_value(value: Any) -> List[str]:
+    urls = []
+    if isinstance(value, str):
+        urls.extend(URL_RE.findall(value))
+        if value.strip().startswith(("{", "[")):
+            try:
+                urls.extend(_extract_urls_from_value(json.loads(value)))
+            except (TypeError, json.JSONDecodeError):
+                pass
+    elif isinstance(value, dict):
+        for nested_value in value.values():
+            urls.extend(_extract_urls_from_value(nested_value))
+    elif isinstance(value, list):
+        for item in value:
+            urls.extend(_extract_urls_from_value(item))
+    return urls
+
+
+def _detect_social_platform(url: Any, link_text: Any = "") -> str:
+    cleaned_url = _clean_social_url(url)
+    lowered_url = cleaned_url.lower()
+    lowered_text = _clean_text(link_text).lower()
+    for platform, domains in SOCIAL_PLATFORMS.items():
+        if any(_domain_matches(lowered_url, domain) for domain in domains):
+            return platform
+        if lowered_text == platform or f" {platform} " in f" {lowered_text} ":
+            return platform
+    if lowered_text in {"x", "twitter/x", "x twitter"}:
+        return "twitter"
+    return ""
+
+
+def _domain_matches(url: str, domain: str) -> bool:
+    try:
+        hostname = urlparse(url).hostname or ""
+    except ValueError:
+        hostname = ""
+    hostname = hostname.lower()
+    return hostname == domain or hostname.endswith(f".{domain}")
+
+
+def _clean_social_url(value: Any) -> str:
+    text = _clean_text(value)
+    return text.rstrip(".,;)")
 
 
 def _join_labeled_text(parts: Iterable[tuple[str, Any]]) -> str:

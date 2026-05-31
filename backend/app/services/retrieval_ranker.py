@@ -1,5 +1,5 @@
 import re
-from typing import Any, Dict, List, Tuple
+from typing import Any, List, Tuple
 
 
 CONTACT_KEYWORDS = {
@@ -56,6 +56,36 @@ IMAGE_KEYWORDS = {
     "design",
     "style",
 }
+SOCIAL_PLATFORM_KEYWORDS = {
+    "instagram",
+    "facebook",
+    "youtube",
+    "tiktok",
+    "twitter",
+    "linkedin",
+    "pinterest",
+}
+SOCIAL_LINK_KEYWORDS = {
+    "social",
+    "media",
+    "link",
+    "links",
+    "profile",
+    "handle",
+    "page",
+    "account",
+    "official",
+}
+SOCIAL_DOMAINS = {
+    "instagram": ("instagram.com",),
+    "facebook": ("facebook.com", "fb.com"),
+    "youtube": ("youtube.com", "youtu.be"),
+    "tiktok": ("tiktok.com",),
+    "twitter": ("twitter.com", "x.com"),
+    "linkedin": ("linkedin.com",),
+    "pinterest": ("pinterest.com",),
+    "whatsapp": ("wa.me", "whatsapp.com"),
+}
 
 STOPWORDS = {
     "a",
@@ -105,6 +135,8 @@ def classify_query_intent(query: str) -> str:
     normalized = normalize_text(query)
     terms = set(extract_query_terms(normalized))
 
+    if _is_social_link_query(normalized, terms):
+        return "social_link"
     if "customer service" in normalized or terms & CONTACT_KEYWORDS:
         return "contact"
     if "store location" in normalized or terms & LOCATION_KEYWORDS:
@@ -130,10 +162,30 @@ def score_keyword_overlap(query: str, chunk: dict) -> float:
     return round(hits / len(terms), 6)
 
 
-def score_intent_match(query_intent: str, chunk: dict) -> float:
+def score_intent_match(query_intent: str, chunk: dict, query: str = "") -> float:
     """Score exact factual signals for the query intent."""
     searchable = _chunk_search_text(chunk)
     source_text = _source_text(chunk)
+
+    if query_intent == "social_link":
+        requested_platforms = _requested_social_platforms(query)
+        platforms_in_chunk = _platforms_in_text(searchable)
+        score = 0.0
+        if _chunk_type(chunk) == "social_link":
+            score += 0.55
+        if requested_platforms and requested_platforms & platforms_in_chunk:
+            score += 0.35
+        elif platforms_in_chunk:
+            score += 0.2
+        if _has_social_url(searchable):
+            score += 0.25
+        if "sameas" in searchable:
+            score += 0.12
+        if "url:" in searchable:
+            score += 0.12
+        if any(path in source_text for path in ("social", "instagram", "facebook", "youtube", "tiktok")):
+            score += 0.12
+        return min(1.0, round(score, 6))
 
     if query_intent == "contact":
         score = 0.0
@@ -241,7 +293,7 @@ def calculate_rerank_score(query: str, chunk: dict) -> dict:
     query_intent = classify_query_intent(query)
     vector_score = _vector_score(chunk)
     keyword_overlap = score_keyword_overlap(query, chunk)
-    intent_match = score_intent_match(query_intent, chunk)
+    intent_match = score_intent_match(query_intent, chunk, query=query)
     chunk_type_weight = _chunk_type_weight(query_intent, chunk)
     source_relevance = _source_relevance_score(query_intent, chunk)
     content_quality = score_chunk_quality(chunk)
@@ -337,15 +389,19 @@ def _dedupe_scored_chunks(scored: List[Tuple[dict, int]]) -> list[dict]:
 
 def _chunk_type_weight(query_intent: str, chunk: dict) -> float:
     chunk_type = _chunk_type(chunk)
+    if chunk_type == "social_link":
+        return 1.0 if query_intent == "social_link" else 0.5
     if chunk_type == "section":
-        return 0.95
+        return 0.72 if query_intent == "social_link" else 0.95
     if chunk_type == "paragraph_group":
-        return 0.9
+        return 0.62 if query_intent == "social_link" else 0.9
     if chunk_type == "faq":
         return 0.9 if query_intent in {"contact", "policy", "faq", "general"} else 0.75
     if chunk_type == "table":
         return 0.7
     if chunk_type == "structured_data":
+        if query_intent == "social_link":
+            return 0.82
         return 0.45 if query_intent in {"contact", "location", "policy"} else 0.35
     if chunk_type == "image_context":
         if query_intent == "image":
@@ -361,7 +417,12 @@ def _chunk_type_weight(query_intent: str, chunk: dict) -> float:
 def _source_relevance_score(query_intent: str, chunk: dict) -> float:
     source = _source_text(chunk)
     score = 0.0
-    if query_intent == "contact":
+    if query_intent == "social_link":
+        if any(term in source for term in ("social", "instagram", "facebook", "youtube", "tiktok")):
+            score += 0.45
+        if any(term in source for term in ("contact", "about", "home")):
+            score += 0.15
+    elif query_intent == "contact":
         if "contact" in source:
             score += 0.55
         if any(term in source for term in ("support", "customer-service", "customer_service", "whatsapp")):
@@ -405,6 +466,13 @@ def _penalty_score(query_intent: str, chunk: dict, intent_match: float) -> float
         penalty += 0.25
     if query_intent in {"contact", "location"} and "/products/" in source and intent_match < 0.75:
         penalty += 0.35
+    if query_intent == "social_link":
+        if not _has_social_url(text):
+            penalty += 0.75
+        if chunk_type in {"faq", "paragraph_group", "section"} and intent_match < 0.55:
+            penalty += 0.3
+        if "/products/" in source and intent_match < 0.75:
+            penalty += 0.35
     if len(text.split()) < 6:
         penalty += 0.3
 
@@ -457,3 +525,39 @@ def _to_float(value: Any) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def _is_social_link_query(normalized: str, terms: set[str]) -> bool:
+    if "social media" in normalized or "official account" in normalized:
+        return True
+    if "x.com" in normalized or "twitter.com" in normalized:
+        return True
+    if terms & SOCIAL_PLATFORM_KEYWORDS:
+        return True
+    if terms & {"social", "media"} and terms & SOCIAL_LINK_KEYWORDS:
+        return True
+    if "whatsapp" in terms and terms & {"link", "links", "profile", "handle", "account"}:
+        return True
+    return False
+
+
+def _requested_social_platforms(searchable: str) -> set[str]:
+    return _platforms_in_text(searchable)
+
+
+def _platforms_in_text(text: str) -> set[str]:
+    normalized = normalize_text(text)
+    platforms = {platform for platform in SOCIAL_PLATFORM_KEYWORDS if platform in normalized}
+    if "x.com" in normalized or "twitter.com" in normalized:
+        platforms.add("twitter")
+    if "whatsapp" in normalized or "wa.me" in normalized:
+        platforms.add("whatsapp")
+    for platform, domains in SOCIAL_DOMAINS.items():
+        if any(domain in normalized for domain in domains):
+            platforms.add(platform)
+    return platforms
+
+
+def _has_social_url(text: str) -> bool:
+    normalized = normalize_text(text)
+    return any(domain in normalized for domains in SOCIAL_DOMAINS.values() for domain in domains)

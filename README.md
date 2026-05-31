@@ -167,7 +167,7 @@ This command uses OpenAI embeddings, so `OPENAI_API_KEY` must be set in `.env`.
 
 ### RAG retrieval quality and hybrid reranking
 
-ChatSMITH uses vector search for semantic similarity, then applies deterministic keyword/rule-based reranking before final chunks are sent to the chat prompt. This improves exact factual questions such as phone numbers, WhatsApp, email, addresses, store locations, timings, refund/return policies, and delivery questions.
+ChatSMITH uses vector search for semantic similarity, then applies deterministic keyword/rule-based reranking before final chunks are sent to the chat prompt. This improves exact factual questions such as phone numbers, WhatsApp, email, addresses, store locations, timings, refund/return policies, delivery questions, and social media links.
 
 The hybrid retrieval flow is:
 
@@ -177,6 +177,8 @@ The hybrid retrieval flow is:
 4. classify query intent,
 5. boost answer-bearing chunks such as `section`, `paragraph_group`, `faq`, and `table`,
 6. penalize weak `page_summary`, `image_context`, and unrelated product/footer chunks for contact/location/policy questions.
+
+Social and external profile URLs are extracted into dedicated `social_link` chunks from page links and structured data such as `sameAs`. Social media questions use a `social_link` intent so Instagram, Facebook, YouTube, TikTok, Twitter/X, LinkedIn, Pinterest, and external WhatsApp links can rank above generic footer text or platform-name-only sections.
 
 Reranking does not change stored chunks or embeddings. It only changes which chunks are returned for a query.
 
@@ -191,6 +193,8 @@ for q in [
     "contact number of Lama Retail",
     "Lama Retail phone number whatsapp customer service",
     "store locations of Lama Retail",
+    "Give me Lama Retail Instagram link",
+    "Lama Retail instagram facebook youtube tiktok",
 ]:
     print("\nQUERY:", q)
     results = retrieve_relevant_chunks(website_id, q, top_k=5)

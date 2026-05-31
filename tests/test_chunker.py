@@ -220,3 +220,90 @@ def test_summarize_chunks_counts_types_and_pages():
     assert summary["total_chunks"] == len(chunks)
     assert summary["by_type"]["faq"] == 1
     assert summary["pages_covered"] == 1
+
+
+def _social_knowledge():
+    knowledge = _sample_v2_knowledge()
+    knowledge["pages"][0]["page_url"] = "https://pk.lamaretail.com/"
+    knowledge["pages"][0]["normalized_page_url"] = "https://pk.lamaretail.com"
+    knowledge["pages"][0]["title"] = "LAMA RETAIL - Lama Retail"
+    knowledge["pages"][0]["description"] = "Lama Retail home."
+    knowledge["pages"][0]["sections"] = [{"heading": "Footer", "content": "Instagram Facebook YouTube TikTok"}]
+    knowledge["pages"][0]["paragraphs"] = ["Follow Lama Retail on social media."]
+    knowledge["pages"][0]["links"] = [
+        {"text": "Instagram", "url": "https://www.instagram.com/lamaretail/"},
+        {"text": "Facebook", "url": "https://www.facebook.com/Lama-105719344378446"},
+        {"text": "YouTube", "url": "https://www.youtube.com/channel/UCy2wnvTRxfUshTztbdDds2g"},
+        {"text": "TikTok", "url": "https://www.tiktok.com/@lamaretail"},
+    ]
+    knowledge["pages"][0]["structured_data"] = [
+        {
+            "@type": "Organization",
+            "name": "Lama Retail",
+            "sameAs": [
+                "https://www.instagram.com/lamaretail/",
+                "https://www.facebook.com/Lama-105719344378446",
+            ],
+        }
+    ]
+    return knowledge
+
+
+def test_page_social_links_create_social_link_chunks():
+    chunks = build_chunks_from_knowledge(_social_knowledge())
+    social_chunks = [chunk for chunk in chunks if chunk["chunk_type"] == "social_link"]
+    platforms = {chunk["metadata"]["social_platform"] for chunk in social_chunks}
+
+    assert {"instagram", "facebook", "youtube", "tiktok"}.issubset(platforms)
+    assert any("URL: https://www.instagram.com/lamaretail/" in chunk["text"] for chunk in social_chunks)
+    assert any("Social platform: TikTok" in chunk["text"] for chunk in social_chunks)
+
+
+def test_structured_data_same_as_creates_social_link_chunks():
+    knowledge = _sample_v2_knowledge()
+    knowledge["pages"][0]["links"] = []
+    knowledge["pages"][0]["structured_data"] = [
+        {
+            "@type": "Organization",
+            "sameAs": [
+                "https://www.instagram.com/lamaretail/",
+                "https://www.youtube.com/channel/UCy2wnvTRxfUshTztbdDds2g",
+            ],
+        }
+    ]
+
+    social_chunks = [
+        chunk for chunk in build_chunks_from_knowledge(knowledge) if chunk["chunk_type"] == "social_link"
+    ]
+
+    assert {chunk["metadata"]["social_platform"] for chunk in social_chunks} == {"instagram", "youtube"}
+    assert all(chunk["metadata"]["source_kind"] == "structured_data" for chunk in social_chunks)
+
+
+def test_duplicate_social_links_are_deduplicated_by_platform_url_and_source():
+    knowledge = _social_knowledge()
+    knowledge["pages"][0]["links"].append(
+        {"text": "Instagram", "url": "https://www.instagram.com/lamaretail/"}
+    )
+
+    instagram_chunks = [
+        chunk
+        for chunk in build_chunks_from_knowledge(knowledge)
+        if chunk["chunk_type"] == "social_link"
+        and chunk["metadata"]["social_platform"] == "instagram"
+        and chunk["metadata"]["social_url"] == "https://www.instagram.com/lamaretail/"
+    ]
+
+    assert len(instagram_chunks) == 1
+
+
+def test_tiktok_link_from_page_links_is_preserved_as_social_chunk():
+    chunks = build_chunks_from_knowledge(_social_knowledge())
+    tiktok_chunks = [
+        chunk
+        for chunk in chunks
+        if chunk["chunk_type"] == "social_link" and "https://www.tiktok.com/@lamaretail" in chunk["text"]
+    ]
+
+    assert len(tiktok_chunks) == 1
+    assert tiktok_chunks[0]["metadata"]["social_platform"] == "tiktok"

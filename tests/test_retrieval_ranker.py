@@ -225,3 +225,114 @@ def test_score_helpers_return_positive_values_for_exact_contact_match():
 
     assert score_keyword_overlap("contact number whatsapp", chunk) > 0
     assert score_intent_match("contact", chunk) > 0.8
+
+
+def test_social_link_query_intent_detects_platform_and_link_questions():
+    assert classify_query_intent("Give me Lama Retail Instagram link") == "social_link"
+    assert classify_query_intent("Does Lama Retail have Instagram?") == "social_link"
+    assert classify_query_intent("Lama Retail social media links") == "social_link"
+
+
+def test_social_link_chunk_with_instagram_url_ranks_above_mention_only_faq():
+    chunks = [
+        _chunk(
+            "faq-mention",
+            "LAMA is available on social media platforms such as Facebook, Instagram and Youtube.",
+            chunk_type="faq",
+            score=0.9,
+            page_title="FAQ",
+            source_url="https://pk.lamaretail.com/pages/faqs",
+        ),
+        _chunk(
+            "instagram-link",
+            "Social platform: Instagram URL: https://www.instagram.com/lamaretail/ Link text: Instagram",
+            chunk_type="social_link",
+            score=0.2,
+            page_title="LAMA RETAIL - Lama Retail",
+            source_url="https://pk.lamaretail.com/",
+        ),
+    ]
+
+    reranked, debug = rerank_chunks("Give me Lama Retail Instagram link", chunks, top_k=2)
+
+    assert debug["query_intent"] == "social_link"
+    assert reranked[0]["chunk_id"] == "instagram-link"
+    assert reranked[0]["rerank_components"]["intent_match"] > 0.8
+
+
+def test_structured_data_same_as_instagram_ranks_high_for_social_query():
+    chunk = _chunk(
+        "same-as",
+        '{"@type": "Organization", "sameAs": ["https://www.instagram.com/lamaretail/"]}',
+        chunk_type="structured_data",
+        score=0.3,
+        page_title="LAMA RETAIL",
+        source_url="https://pk.lamaretail.com/",
+    )
+
+    components = calculate_rerank_score("Does Lama Retail have Instagram?", chunk)
+
+    assert components["query_intent"] == "social_link"
+    assert components["intent_match"] >= 0.6
+    assert components["chunk_type_weight"] > 0.8
+
+
+def test_section_with_platform_names_but_no_url_ranks_below_social_link_url():
+    chunks = [
+        _chunk(
+            "platform-names",
+            "Sign up and save Instagram Facebook YouTube TikTok",
+            chunk_type="section",
+            score=0.95,
+            page_title="LAMA RETAIL",
+            source_url="https://pk.lamaretail.com/",
+        ),
+        _chunk(
+            "instagram-url",
+            "Social platform: Instagram URL: https://www.instagram.com/lamaretail/",
+            chunk_type="social_link",
+            score=0.1,
+            page_title="LAMA RETAIL",
+            source_url="https://pk.lamaretail.com/",
+        ),
+    ]
+
+    reranked, _debug = rerank_chunks("Lama Retail Instagram link", chunks, top_k=2)
+
+    assert reranked[0]["chunk_id"] == "instagram-url"
+
+
+def test_product_footer_chunk_is_penalized_for_social_link_query():
+    chunks = [
+        _chunk(
+            "product-footer",
+            "Instagram Facebook YouTube TikTok",
+            chunk_type="section",
+            score=0.98,
+            page_title="Black Pants",
+            source_url="https://pk.lamaretail.com/products/black-pants",
+        ),
+        _chunk(
+            "social-link",
+            "Social platform: Instagram URL: https://www.instagram.com/lamaretail/",
+            chunk_type="social_link",
+            score=0.1,
+            page_title="LAMA RETAIL",
+            source_url="https://pk.lamaretail.com/",
+        ),
+    ]
+
+    reranked, _debug = rerank_chunks("Instagram profile link", chunks, top_k=2)
+
+    assert reranked[0]["chunk_id"] == "social-link"
+
+
+def test_social_link_ranking_handles_missing_metadata():
+    reranked, debug = rerank_chunks(
+        "Instagram link",
+        [{"chunk_id": "minimal", "text": "URL: https://www.instagram.com/lamaretail/", "chunk_type": "social_link"}],
+        top_k=1,
+    )
+
+    assert reranked[0]["chunk_id"] == "minimal"
+    assert debug["query_intent"] == "social_link"

@@ -100,3 +100,44 @@ def test_format_sources_truncates_previews_and_handles_missing_metadata():
     assert sources[0]["chunk_type"] == ""
     assert len(sources[0]["text_preview"]) == 243
     assert sources[0]["text_preview"].endswith("...")
+
+
+def test_rag_prompt_allows_exact_urls_when_present_for_link_questions():
+    messages = build_rag_messages(
+        question="Give me Lama Retail Instagram link",
+        chat_history=[],
+        retrieved_chunks=[
+            {
+                "chunk_id": "social",
+                "text": "Social platform: Instagram\nURL: https://www.instagram.com/lamaretail/",
+                "source_url": "https://pk.lamaretail.com/",
+                "page_title": "LAMA RETAIL",
+                "chunk_type": "social_link",
+            }
+        ],
+    )
+
+    system_content = messages[0]["content"]
+    assert "For link questions, use the exact URL from the retrieved context when it is present." in system_content
+    assert "Never invent social media, profile, product, or contact links." in system_content
+    assert "https://www.instagram.com/lamaretail/" in system_content
+
+
+def test_rag_prompt_distinguishes_platform_mentions_without_links():
+    messages = build_rag_messages(
+        question="Does Lama Retail have Instagram?",
+        chat_history=[],
+        retrieved_chunks=[
+            {
+                "chunk_id": "mention",
+                "text": "LAMA is available on Facebook, Instagram and YouTube.",
+                "source_url": "https://pk.lamaretail.com/pages/faqs",
+                "page_title": "FAQ",
+                "chunk_type": "faq",
+            }
+        ],
+    )
+
+    system_content = messages[0]["content"]
+    assert "If a platform is mentioned but no URL is present" in system_content
+    assert "Do not invent details" in system_content

@@ -170,6 +170,46 @@ async def test_chat_prompt_receives_reranked_contact_details(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_chat_can_answer_social_link_from_retrieved_social_chunk(monkeypatch):
+    fake_client = FakeOpenAIClient(answer="Yes. Lama Retail's Instagram link is https://www.instagram.com/lamaretail/.")
+    social_chunk = {
+        "chunk_id": "instagram-link",
+        "text": "Social platform: Instagram\nURL: https://www.instagram.com/lamaretail/\nLink text: Instagram",
+        "score": 0.44,
+        "source_url": "https://pk.lamaretail.com/",
+        "page_title": "LAMA RETAIL - Lama Retail",
+        "chunk_type": "social_link",
+        "metadata": {"website_id": "lama", "social_platform": "instagram"},
+        "query_intent": "social_link",
+    }
+
+    monkeypatch.setattr(
+        chat_api,
+        "retrieve_relevant_chunks",
+        lambda *args, **kwargs: (
+            [social_chunk],
+            {"query_intent": "social_link", "candidate_count_combined": 8},
+        ),
+    )
+    monkeypatch.setattr(chat_api, "get_openai_client", lambda: fake_client)
+
+    response = await chat_api.chat(
+        ChatRequest(
+            website_id="lama",
+            messages=[ChatMessage(role="user", content="Give me Lama Retail Instagram link")],
+        )
+    )
+
+    sent_context = fake_client.calls[0]["messages"][0]["content"]
+    assert response.mode == "rag"
+    assert response.answer == "Yes. Lama Retail's Instagram link is https://www.instagram.com/lamaretail/."
+    assert "https://www.instagram.com/lamaretail/" in sent_context
+    assert "For link questions, use the exact URL" in sent_context
+    assert response.sources[0].chunk_type == "social_link"
+    assert response.retrieval_debug["hybrid"]["query_intent"] == "social_link"
+
+
+@pytest.mark.asyncio
 async def test_chat_returns_warning_when_no_chunks_and_no_fallback(monkeypatch):
     monkeypatch.setattr(chat_api, "retrieve_relevant_chunks", lambda *args, **kwargs: ([], {"query_intent": "contact"}))
     monkeypatch.setattr(
