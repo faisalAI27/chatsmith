@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     embedding_model: str = "text-embedding-3-small"
     embedding_batch_size: int = 64
     retrieval_top_k: int = 5
+    hybrid_retrieval_enabled: bool = True
+    hybrid_lexical_candidate_limit: int = 2000
+    hybrid_vector_candidate_multiplier: int = 4
     redis_url: str = "redis://localhost:6379/0"
     environment: str = "dev"
 

@@ -124,6 +124,27 @@ class ChromaVectorStore:
         result = self.get_or_create_collection().get(where={"website_id": website_id}, include=[])
         return len(result.get("ids", []) or [])
 
+    def get_website_chunks(
+        self,
+        website_id: str,
+        limit: int = 2000,
+        chunk_types: list[str] | None = None,
+    ) -> list[dict]:
+        """Return stored chunks for lexical reranking, filtered by website_id."""
+        if not website_id:
+            return []
+
+        filters = {}
+        if chunk_types:
+            filters["chunk_type"] = [chunk_type for chunk_type in chunk_types if chunk_type]
+        where = _build_where_filter(website_id, filters)
+        result = self.get_or_create_collection().get(
+            where=where,
+            limit=max(1, int(limit or 2000)),
+            include=["documents", "metadatas"],
+        )
+        return _get_result_to_records(result)
+
     def get_collection_stats(self) -> dict:
         collection = self.get_or_create_collection()
         return {
@@ -195,6 +216,29 @@ def _query_result_to_records(result: dict) -> list[dict]:
                 "text": documents[index] if index < len(documents) else "",
                 "distance": distance,
                 "score": _distance_to_score(distance),
+                "source_url": metadata.get("source_url", ""),
+                "page_title": metadata.get("page_title", ""),
+                "chunk_type": metadata.get("chunk_type", ""),
+                "metadata": metadata,
+            }
+        )
+    return records
+
+
+def _get_result_to_records(result: dict) -> list[dict]:
+    ids = result.get("ids") or []
+    documents = result.get("documents") or []
+    metadatas = result.get("metadatas") or []
+
+    records = []
+    for index, chunk_id in enumerate(ids):
+        metadata = metadatas[index] if index < len(metadatas) and isinstance(metadatas[index], dict) else {}
+        records.append(
+            {
+                "chunk_id": chunk_id,
+                "text": documents[index] if index < len(documents) else "",
+                "distance": None,
+                "score": None,
                 "source_url": metadata.get("source_url", ""),
                 "page_title": metadata.get("page_title", ""),
                 "chunk_type": metadata.get("chunk_type", ""),

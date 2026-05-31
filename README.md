@@ -114,6 +114,9 @@ EMBEDDING_MODEL=text-embedding-3-small
 EMBEDDING_BATCH_SIZE=64
 
 RETRIEVAL_TOP_K=5
+HYBRID_RETRIEVAL_ENABLED=true
+HYBRID_LEXICAL_CANDIDATE_LIMIT=2000
+HYBRID_VECTOR_CANDIDATE_MULTIPLIER=4
 ```
 
 `backend/vector_store/` is generated runtime data and is ignored by Git. If vector indexing fails during development, website generation still completes through the legacy system-prompt fallback and exposes the indexing warning in job stats.
@@ -161,6 +164,41 @@ PY
 ```
 
 This command uses OpenAI embeddings, so `OPENAI_API_KEY` must be set in `.env`.
+
+### RAG retrieval quality and hybrid reranking
+
+ChatSMITH uses vector search for semantic similarity, then applies deterministic keyword/rule-based reranking before final chunks are sent to the chat prompt. This improves exact factual questions such as phone numbers, WhatsApp, email, addresses, store locations, timings, refund/return policies, and delivery questions.
+
+The hybrid retrieval flow is:
+
+1. fetch extra vector candidates,
+2. fetch lexical candidates for the same `website_id`,
+3. deduplicate candidates,
+4. classify query intent,
+5. boost answer-bearing chunks such as `section`, `paragraph_group`, `faq`, and `table`,
+6. penalize weak `page_summary`, `image_context`, and unrelated product/footer chunks for contact/location/policy questions.
+
+Reranking does not change stored chunks or embeddings. It only changes which chunks are returned for a query.
+
+Manual retrieval ranking check:
+
+```bash
+python3 - <<'PY'
+from backend.app.services.retrieval_service import retrieve_relevant_chunks
+
+website_id = "PUT_WEBSITE_ID_HERE"
+for q in [
+    "contact number of Lama Retail",
+    "Lama Retail phone number whatsapp customer service",
+    "store locations of Lama Retail",
+]:
+    print("\nQUERY:", q)
+    results = retrieve_relevant_chunks(website_id, q, top_k=5)
+    for r in results:
+        print(r.get("chunk_type"), r.get("page_title"), r.get("source_url"), r.get("rerank_score"))
+        print(r.get("text", "")[:300])
+PY
+```
 
 ### RAG chat behavior
 

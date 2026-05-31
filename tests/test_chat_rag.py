@@ -66,12 +66,14 @@ async def test_chat_uses_rag_retrieval_when_website_id_is_provided(monkeypatch):
     fake_client = FakeOpenAIClient(answer="The site offers workflow automation services.")
     calls = {}
 
-    def fake_retrieve_relevant_chunks(website_id, query, top_k=None, chunk_types=None):
+    def fake_retrieve_relevant_chunks(website_id, query, top_k=None, chunk_types=None, include_debug=False):
         calls["website_id"] = website_id
         calls["query"] = query
         calls["top_k"] = top_k
         calls["chunk_types"] = chunk_types
-        return _retrieved_chunks()
+        chunks = _retrieved_chunks()
+        debug = {"query_intent": "general", "candidate_count_combined": len(chunks)}
+        return (chunks, debug) if include_debug else chunks
 
     monkeypatch.setattr(chat_api, "retrieve_relevant_chunks", fake_retrieve_relevant_chunks)
     monkeypatch.setattr(chat_api, "get_openai_client", lambda: fake_client)
@@ -91,6 +93,7 @@ async def test_chat_uses_rag_retrieval_when_website_id_is_provided(monkeypatch):
     assert response.sources[0].source_url == "https://example.com/services"
     assert response.retrieval_debug["chunks_retrieved"] == 2
     assert response.retrieval_debug["chunk_types"] == {"faq": 1, "section": 1}
+    assert response.retrieval_debug["hybrid"]["candidate_count_combined"] == 2
     assert response.warnings == []
     assert calls["website_id"] == "site-a"
     assert calls["query"] == "What services are offered?"
@@ -129,8 +132,46 @@ async def test_chat_falls_back_to_legacy_prompt_when_retrieval_fails(monkeypatch
 
 
 @pytest.mark.asyncio
+async def test_chat_prompt_receives_reranked_contact_details(monkeypatch):
+    fake_client = FakeOpenAIClient(answer="The contact number is 0311-1115262.")
+    contact_chunk = {
+        "chunk_id": "contact-detail",
+        "text": "CUSTOMER SERVICE Email | Whatsapp Contact us at 0311-1115262 09:00 AM to 09:00 PM (PST) Monday - Saturday",
+        "score": 0.52,
+        "source_url": "https://lamaretail.com/pages/contact",
+        "page_title": "Contact - Lama Retail",
+        "chunk_type": "section",
+        "metadata": {"website_id": "lama"},
+        "rerank_score": 3.4,
+    }
+
+    monkeypatch.setattr(
+        chat_api,
+        "retrieve_relevant_chunks",
+        lambda *args, **kwargs: (
+            [contact_chunk],
+            {"query_intent": "contact", "candidate_count_combined": 12},
+        ),
+    )
+    monkeypatch.setattr(chat_api, "get_openai_client", lambda: fake_client)
+
+    response = await chat_api.chat(
+        ChatRequest(
+            website_id="lama",
+            messages=[ChatMessage(role="user", content="contact number of Lama Retail")],
+        )
+    )
+
+    sent_context = fake_client.calls[0]["messages"][0]["content"]
+    assert response.mode == "rag"
+    assert "0311-1115262" in sent_context
+    assert "09:00 AM to 09:00 PM" in sent_context
+    assert response.sources[0].source_url == "https://lamaretail.com/pages/contact"
+
+
+@pytest.mark.asyncio
 async def test_chat_returns_warning_when_no_chunks_and_no_fallback(monkeypatch):
-    monkeypatch.setattr(chat_api, "retrieve_relevant_chunks", lambda *args, **kwargs: [])
+    monkeypatch.setattr(chat_api, "retrieve_relevant_chunks", lambda *args, **kwargs: ([], {"query_intent": "contact"}))
     monkeypatch.setattr(
         chat_api,
         "get_openai_client",
@@ -157,9 +198,10 @@ async def test_chat_warns_and_skips_openai_when_retrieved_chunks_are_weak(monkey
     monkeypatch.setattr(
         chat_api,
         "retrieve_relevant_chunks",
-        lambda *args, **kwargs: [
-            {"text": "", "source_url": "", "page_title": "", "chunk_type": "section"}
-        ],
+        lambda *args, **kwargs: (
+            [{"text": "", "source_url": "", "page_title": "", "chunk_type": "section"}],
+            {"query_intent": "contact"},
+        ),
     )
     monkeypatch.setattr(
         chat_api,
@@ -186,16 +228,19 @@ async def test_chat_handles_missing_source_metadata_without_crashing(monkeypatch
     monkeypatch.setattr(
         chat_api,
         "retrieve_relevant_chunks",
-        lambda *args, **kwargs: [
-            {
-                "chunk_id": "c1",
-                "text": "This website offers car inspection booking for customers.",
-                "score": 0.7,
-                "source_url": "",
-                "page_title": "",
-                "chunk_type": "section",
-            }
-        ],
+        lambda *args, **kwargs: (
+            [
+                {
+                    "chunk_id": "c1",
+                    "text": "This website offers car inspection booking for customers.",
+                    "score": 0.7,
+                    "source_url": "",
+                    "page_title": "",
+                    "chunk_type": "section",
+                }
+            ],
+            {"query_intent": "contact"},
+        ),
     )
     monkeypatch.setattr(chat_api, "get_openai_client", lambda: fake_client)
 

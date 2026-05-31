@@ -37,12 +37,17 @@ async def chat(req: ChatRequest):
 
     if req.website_id:
         try:
-            retrieved_chunks = retrieve_relevant_chunks(
+            retrieval_result = retrieve_relevant_chunks(
                 website_id=req.website_id,
                 query=question,
                 top_k=req.top_k,
                 chunk_types=req.chunk_types,
+                include_debug=True,
             )
+            if isinstance(retrieval_result, tuple):
+                retrieved_chunks, hybrid_debug = retrieval_result
+            else:
+                retrieved_chunks, hybrid_debug = retrieval_result, {}
         except Exception as exc:
             warnings.append(f"RAG retrieval failed: {exc}")
             if req.system_prompt:
@@ -50,6 +55,7 @@ async def chat(req: ChatRequest):
             raise HTTPException(status_code=503, detail=warnings[-1])
 
         retrieval_debug = build_retrieval_debug_summary(retrieved_chunks)
+        retrieval_debug["hybrid"] = hybrid_debug
         warnings.extend(detect_low_quality_retrieval(retrieved_chunks))
 
         if retrieved_chunks and is_context_sufficient(retrieved_chunks):

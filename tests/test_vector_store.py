@@ -84,3 +84,22 @@ def test_chroma_query_accepts_additional_metadata_filters(tmp_path):
     )
 
     assert [result["chunk_type"] for result in results] == ["faq"]
+
+
+def test_get_website_chunks_returns_records_for_lexical_reranking(tmp_path):
+    chunks = [
+        _chunk("c1", "site-a", "contact phone number", "section"),
+        _chunk("c2", "site-a", "image alt text", "image_context"),
+        _chunk("c3", "site-b", "other site", "section"),
+    ]
+    embeddings = _embeddings_for(chunks)
+    store = ChromaVectorStore(db_dir=tmp_path / "chroma", collection_name="lexical_chunks")
+    store.upsert_chunks(chunks, embeddings)
+
+    results = store.get_website_chunks("site-a", limit=10, chunk_types=["section"])
+
+    assert len(results) == 1
+    assert results[0]["chunk_id"] == "c1"
+    assert results[0]["text"] == "contact phone number"
+    assert results[0]["metadata"]["website_id"] == "site-a"
+    assert results[0]["chunk_type"] == "section"
