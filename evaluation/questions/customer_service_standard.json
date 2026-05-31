@@ -1,0 +1,812 @@
+[
+  {
+    "id": "business_001",
+    "category": "business_overview",
+    "intent": "business_summary",
+    "question": "What is this website about?",
+    "expected_behavior": "Answer from website context and summarize the business clearly.",
+    "requires_source": true,
+    "hallucination_sensitive": false,
+    "manual_review_required": true
+  },
+  {
+    "id": "business_002",
+    "category": "business_overview",
+    "intent": "products_or_services_summary",
+    "question": "What does this company sell or offer?",
+    "expected_behavior": "Use website context to explain what the company sells or offers.",
+    "requires_source": true,
+    "hallucination_sensitive": false,
+    "manual_review_required": true
+  },
+  {
+    "id": "business_003",
+    "category": "business_overview",
+    "intent": "services_summary",
+    "question": "What services does this website provide?",
+    "expected_behavior": "Answer only from retrieved website context and avoid adding services not shown on the site.",
+    "requires_source": true,
+    "hallucination_sensitive": false,
+    "manual_review_required": true
+  },
+  {
+    "id": "business_004",
+    "category": "business_overview",
+    "intent": "simple_summary",
+    "question": "Can you summarize this website in simple words?",
+    "expected_behavior": "Give a concise plain-language summary using website context.",
+    "requires_source": true,
+    "hallucination_sensitive": false,
+    "manual_review_required": true
+  },
+  {
+    "id": "business_005",
+    "category": "business_overview",
+    "intent": "target_customer",
+    "question": "Who is this brand for?",
+    "expected_behavior": "Describe the likely audience only if the website provides enough context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "contact_001",
+    "category": "contact_support",
+    "intent": "contact_options",
+    "question": "How can I contact them?",
+    "expected_behavior": "Provide website-supported contact methods such as phone, email, WhatsApp, or contact page.",
+    "requires_source": true,
+    "hallucination_sensitive": false,
+    "manual_review_required": true
+  },
+  {
+    "id": "contact_002",
+    "category": "contact_support",
+    "intent": "phone_number",
+    "question": "What is their contact number?",
+    "expected_behavior": "Return the exact contact number if present. If not present, say the website does not provide enough information.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "contact_003",
+    "category": "contact_support",
+    "intent": "whatsapp_support",
+    "question": "Do they have WhatsApp support?",
+    "expected_behavior": "Answer yes/no from website context and include the WhatsApp number or link if available.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "contact_004",
+    "category": "contact_support",
+    "intent": "customer_service_hours",
+    "question": "What are their customer service hours?",
+    "expected_behavior": "Give exact support hours if present; otherwise say the website does not provide enough information.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "contact_005",
+    "category": "contact_support",
+    "intent": "email_address",
+    "question": "Do they provide an email address?",
+    "expected_behavior": "Return the exact email address if present; otherwise say the website does not provide enough information.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "contact_006",
+    "category": "contact_support",
+    "intent": "complaint_help",
+    "question": "How can I complain or ask for help?",
+    "expected_behavior": "Use website-supported help, complaint, customer service, email, phone, or contact page details.",
+    "requires_source": true,
+    "hallucination_sensitive": false,
+    "manual_review_required": true
+  },
+  {
+    "id": "stores_001",
+    "category": "store_locations",
+    "intent": "all_locations",
+    "question": "Where are their stores located?",
+    "expected_behavior": "List store locations from website context or say the website does not provide enough information.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "stores_002",
+    "category": "store_locations",
+    "intent": "city_location",
+    "question": "Do they have a store in Lahore?",
+    "expected_behavior": "Answer from store-location context and include location details if available.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "stores_003",
+    "category": "store_locations",
+    "intent": "city_location",
+    "question": "Do they have a store in Karachi?",
+    "expected_behavior": "Answer from store-location context and include location details if available.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "stores_004",
+    "category": "store_locations",
+    "intent": "city_location",
+    "question": "Do they have a store in Islamabad?",
+    "expected_behavior": "Answer from store-location context and include location details if available.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "stores_005",
+    "category": "store_locations",
+    "intent": "all_locations",
+    "question": "Give me all store locations.",
+    "expected_behavior": "List all store locations found in the website context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "stores_006",
+    "category": "store_locations",
+    "intent": "mall_locations",
+    "question": "Which malls are their stores in?",
+    "expected_behavior": "List mall names only if present in website context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "social_001",
+    "category": "social_links",
+    "intent": "instagram_presence",
+    "question": "Does this brand have Instagram?",
+    "expected_behavior": "Answer from website context and include the Instagram URL if available.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "social_002",
+    "category": "social_links",
+    "intent": "instagram_link",
+    "question": "Give me their Instagram link.",
+    "expected_behavior": "Return the exact Instagram URL if present. Do not invent a profile URL.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "social_003",
+    "category": "social_links",
+    "intent": "facebook_link",
+    "question": "Give me their Facebook link.",
+    "expected_behavior": "Return the exact Facebook URL if present. Do not invent a profile URL.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "social_004",
+    "category": "social_links",
+    "intent": "youtube_link",
+    "question": "Give me their YouTube link.",
+    "expected_behavior": "Return the exact YouTube URL if present. Do not invent a channel URL.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "social_005",
+    "category": "social_links",
+    "intent": "all_social_links",
+    "question": "Give me all social media links.",
+    "expected_behavior": "List all social media URLs found in website context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "social_006",
+    "category": "social_links",
+    "intent": "tiktok_presence",
+    "question": "Do they have TikTok?",
+    "expected_behavior": "Answer from website context and include the TikTok URL if available.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "products_001",
+    "category": "products",
+    "intent": "available_products",
+    "question": "What products are available?",
+    "expected_behavior": "Summarize product categories or examples from website context.",
+    "requires_source": true,
+    "hallucination_sensitive": false,
+    "manual_review_required": true
+  },
+  {
+    "id": "products_002",
+    "category": "products",
+    "intent": "category_presence",
+    "question": "Do they sell shoes?",
+    "expected_behavior": "Answer yes/no from product context; do not infer if the website does not say.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "products_003",
+    "category": "products",
+    "intent": "category_presence",
+    "question": "Do they sell shirts?",
+    "expected_behavior": "Answer yes/no from product context; do not infer if the website does not say.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "products_004",
+    "category": "products",
+    "intent": "category_presence",
+    "question": "Do they sell pants?",
+    "expected_behavior": "Answer yes/no from product context; do not infer if the website does not say.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "products_005",
+    "category": "products",
+    "intent": "featured_products",
+    "question": "What are the featured products?",
+    "expected_behavior": "Name featured products only if present in the website context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "products_006",
+    "category": "products",
+    "intent": "single_product_summary",
+    "question": "Tell me about one product from the website.",
+    "expected_behavior": "Describe one product using product page context.",
+    "requires_source": true,
+    "hallucination_sensitive": false,
+    "manual_review_required": true
+  },
+  {
+    "id": "products_007",
+    "category": "products",
+    "intent": "product_price",
+    "question": "What is the price of this product?",
+    "expected_behavior": "Give a price only if a specific product and price are present in context; otherwise ask for a product or say not enough information.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "products_008",
+    "category": "products",
+    "intent": "product_sizes",
+    "question": "What sizes are available?",
+    "expected_behavior": "List sizes only if present in product context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "products_009",
+    "category": "products",
+    "intent": "product_colors",
+    "question": "What colors are available?",
+    "expected_behavior": "List colors only if present in product context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "shipping_001",
+    "category": "delivery_shipping",
+    "intent": "delivery_available",
+    "question": "Do they deliver orders?",
+    "expected_behavior": "Answer from website shipping/delivery context.",
+    "requires_source": true,
+    "hallucination_sensitive": false,
+    "manual_review_required": true
+  },
+  {
+    "id": "shipping_002",
+    "category": "delivery_shipping",
+    "intent": "delivery_time",
+    "question": "How long does delivery take?",
+    "expected_behavior": "Give exact delivery time if present; otherwise say not enough information.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "shipping_003",
+    "category": "delivery_shipping",
+    "intent": "international_delivery",
+    "question": "Do they deliver outside the country?",
+    "expected_behavior": "Answer from website context; do not infer international shipping.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "shipping_004",
+    "category": "delivery_shipping",
+    "intent": "courier_service",
+    "question": "What delivery service do they use?",
+    "expected_behavior": "Name delivery/courier services only if listed on the website.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "shipping_005",
+    "category": "delivery_shipping",
+    "intent": "delivery_charge",
+    "question": "Is there any delivery charge?",
+    "expected_behavior": "Provide delivery charge details only if present.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "shipping_006",
+    "category": "delivery_shipping",
+    "intent": "order_tracking",
+    "question": "How can I track my order?",
+    "expected_behavior": "Explain order tracking only if the website provides tracking information.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "returns_001",
+    "category": "return_refund_exchange",
+    "intent": "return_policy",
+    "question": "What is their return policy?",
+    "expected_behavior": "State return policy from website context or say not enough information.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "returns_002",
+    "category": "return_refund_exchange",
+    "intent": "exchange_policy",
+    "question": "Can I exchange a product?",
+    "expected_behavior": "State exchange policy and time limit if present.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "returns_003",
+    "category": "return_refund_exchange",
+    "intent": "refund_policy",
+    "question": "Can I get a refund?",
+    "expected_behavior": "State refund policy from website context or say not enough information.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "returns_004",
+    "category": "return_refund_exchange",
+    "intent": "return_window",
+    "question": "How many days do I have to return an item?",
+    "expected_behavior": "Give the return/exchange window only if present.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "returns_005",
+    "category": "return_refund_exchange",
+    "intent": "damaged_product",
+    "question": "What if I receive a damaged product?",
+    "expected_behavior": "Explain damaged/faulty item instructions from website context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "returns_006",
+    "category": "return_refund_exchange",
+    "intent": "order_cancellation",
+    "question": "Can I cancel my order?",
+    "expected_behavior": "State cancellation policy only if present.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "payment_001",
+    "category": "payment",
+    "intent": "payment_methods",
+    "question": "What payment methods are available?",
+    "expected_behavior": "List payment methods from website context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "payment_002",
+    "category": "payment",
+    "intent": "cod",
+    "question": "Do they support cash on delivery?",
+    "expected_behavior": "Answer yes/no from payment context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "payment_003",
+    "category": "payment",
+    "intent": "card_payment",
+    "question": "Can I pay by card?",
+    "expected_behavior": "Answer yes/no from payment context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "payment_004",
+    "category": "payment",
+    "intent": "payment_safety",
+    "question": "Is online payment safe?",
+    "expected_behavior": "Use website context about payment safety/security only.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "payment_005",
+    "category": "payment",
+    "intent": "installments",
+    "question": "Do they offer installments?",
+    "expected_behavior": "Answer from website context; if installments are not mentioned, say not enough information.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "account_001",
+    "category": "account_order",
+    "intent": "account_required",
+    "question": "Do I need an account to buy something?",
+    "expected_behavior": "Answer only if account requirements are described on the website.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "account_002",
+    "category": "account_order",
+    "intent": "create_account",
+    "question": "How do I create an account?",
+    "expected_behavior": "Explain account creation only if website context provides steps.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "account_003",
+    "category": "account_order",
+    "intent": "change_order",
+    "question": "How can I change my order?",
+    "expected_behavior": "Use website context about order changes or customer service.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "account_004",
+    "category": "account_order",
+    "intent": "change_address",
+    "question": "Can I change my address after placing an order?",
+    "expected_behavior": "State address-change policy only if present.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "account_005",
+    "category": "account_order",
+    "intent": "order_confirmation",
+    "question": "How will I know my order is confirmed?",
+    "expected_behavior": "Explain order confirmation only if website context provides it.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "size_001",
+    "category": "size_stock",
+    "intent": "choose_size",
+    "question": "How do I choose my size?",
+    "expected_behavior": "Use size-chart or sizing guidance from website context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "size_002",
+    "category": "size_stock",
+    "intent": "size_charts",
+    "question": "Do they provide size charts?",
+    "expected_behavior": "Answer from website context and reference size chart availability if present.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "size_003",
+    "category": "size_stock",
+    "intent": "out_of_stock",
+    "question": "What if an item is out of stock?",
+    "expected_behavior": "Explain out-of-stock guidance from website context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "size_004",
+    "category": "size_stock",
+    "intent": "restock_timing",
+    "question": "When will out-of-stock items be available again?",
+    "expected_behavior": "Give restock timing only if present in website context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "size_005",
+    "category": "size_stock",
+    "intent": "reserve_item",
+    "question": "Can I reserve an item?",
+    "expected_behavior": "Answer from website context; if reservation is not mentioned, say not enough information.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "policy_001",
+    "category": "policy_trust",
+    "intent": "shopping_safety",
+    "question": "Is this website safe for online shopping?",
+    "expected_behavior": "Use website context about SSL, secure payments, privacy, or safety only.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "policy_002",
+    "category": "policy_trust",
+    "intent": "privacy_policy",
+    "question": "Do they have a privacy policy?",
+    "expected_behavior": "Answer from website context and cite privacy policy if present.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "policy_003",
+    "category": "policy_trust",
+    "intent": "terms_conditions",
+    "question": "Do they have terms and conditions?",
+    "expected_behavior": "Answer from website context and cite terms if present.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "policy_004",
+    "category": "policy_trust",
+    "intent": "personal_information_safety",
+    "question": "Is my personal information safe?",
+    "expected_behavior": "Use website privacy/security context only; do not make unsupported guarantees.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "policy_005",
+    "category": "policy_trust",
+    "intent": "refund_policy",
+    "question": "What is their refund policy?",
+    "expected_behavior": "State refund policy from website context or say not enough information.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "natural_001",
+    "category": "natural_customer_language",
+    "intent": "contact_options",
+    "question": "bro how can i contact them?",
+    "expected_behavior": "Answer naturally while using only website-supported contact details.",
+    "requires_source": true,
+    "hallucination_sensitive": false,
+    "manual_review_required": true
+  },
+  {
+    "id": "natural_002",
+    "category": "natural_customer_language",
+    "intent": "instagram_presence",
+    "question": "do they have insta?",
+    "expected_behavior": "Map informal language to Instagram and answer from website context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "natural_003",
+    "category": "natural_customer_language",
+    "intent": "city_location",
+    "question": "where is their Lahore branch?",
+    "expected_behavior": "Answer from store-location context and include Lahore address if available.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "natural_004",
+    "category": "natural_customer_language",
+    "intent": "exchange_policy",
+    "question": "can i return if size is wrong?",
+    "expected_behavior": "Answer from return/exchange/size policy context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "natural_005",
+    "category": "natural_customer_language",
+    "intent": "delivery_time",
+    "question": "how much time does delivery take?",
+    "expected_behavior": "Give exact delivery timing if present.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "natural_006",
+    "category": "natural_customer_language",
+    "intent": "cod",
+    "question": "is COD available?",
+    "expected_behavior": "Map COD to cash on delivery and answer from payment context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "natural_007",
+    "category": "natural_customer_language",
+    "intent": "damaged_product",
+    "question": "what if my order is damaged?",
+    "expected_behavior": "Answer from damaged/faulty item policy context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "hallucination_001",
+    "category": "hallucination_resistance",
+    "intent": "unknown_ceo",
+    "question": "Who is the CEO of this company?",
+    "expected_behavior": "If the website does not provide this information, the chatbot should clearly say it does not have enough information.",
+    "requires_source": false,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "hallucination_002",
+    "category": "hallucination_resistance",
+    "intent": "unknown_revenue",
+    "question": "What is their monthly revenue?",
+    "expected_behavior": "If the website does not provide this information, the chatbot should clearly say it does not have enough information.",
+    "requires_source": false,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "hallucination_003",
+    "category": "hallucination_resistance",
+    "intent": "unknown_employees",
+    "question": "How many total employees do they have?",
+    "expected_behavior": "If the website does not provide this information, the chatbot should clearly say it does not have enough information.",
+    "requires_source": false,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "hallucination_004",
+    "category": "hallucination_resistance",
+    "intent": "unknown_profit",
+    "question": "What is their profit this year?",
+    "expected_behavior": "If the website does not provide this information, the chatbot should clearly say it does not have enough information.",
+    "requires_source": false,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "hallucination_005",
+    "category": "hallucination_resistance",
+    "intent": "unknown_owner",
+    "question": "Who owns this brand?",
+    "expected_behavior": "If the website does not provide this information, the chatbot should clearly say it does not have enough information.",
+    "requires_source": false,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "hallucination_006",
+    "category": "hallucination_resistance",
+    "intent": "private_email",
+    "question": "Give me their private office email.",
+    "expected_behavior": "If the website does not provide this information, the chatbot should clearly say it does not have enough information. It must not invent private contact details.",
+    "requires_source": false,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "cross_site_001",
+    "category": "cross_site_confusion",
+    "intent": "other_site_services",
+    "question": "What services does PakWheels provide?",
+    "expected_behavior": "The chatbot should not use outside knowledge or another website's information unless the current website context is actually about PakWheels.",
+    "requires_source": false,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "cross_site_002",
+    "category": "cross_site_confusion",
+    "intent": "unrelated_ownership",
+    "question": "Does Tesla own this brand?",
+    "expected_behavior": "The chatbot should not use outside knowledge or another website's information.",
+    "requires_source": false,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "cross_site_003",
+    "category": "cross_site_confusion",
+    "intent": "unverified_country_availability",
+    "question": "Is this brand available in USA?",
+    "expected_behavior": "The chatbot should not use outside knowledge or another website's information. It should answer only if the website context says so.",
+    "requires_source": false,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "cross_site_004",
+    "category": "cross_site_confusion",
+    "intent": "unrelated_ownership",
+    "question": "Is this company owned by Amazon?",
+    "expected_behavior": "The chatbot should not use outside knowledge or another website's information.",
+    "requires_source": false,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  }
+]

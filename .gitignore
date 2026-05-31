@@ -21,5 +21,10 @@ backend/vector_store/chroma/
 *.sqlite
 *.db
 
+evaluation/results/*.json
+evaluation/results/*.jsonl
+evaluation/results/*.csv
+evaluation/results/*.md
+
 .vscode/
 .DS_Store

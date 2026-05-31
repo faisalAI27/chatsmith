@@ -132,3 +132,50 @@ def test_hybrid_retrieval_passes_chunk_type_filter_to_vector_and_lexical_store(m
     assert store.filters == {"chunk_type": ["faq"]}
     assert store.chunk_types == ["faq"]
     get_settings.cache_clear()
+
+
+def test_hybrid_retrieval_reranks_social_link_url_chunk(monkeypatch):
+    _enable_hybrid(monkeypatch)
+    weak_vector = [
+        _chunk(
+            "footer-names",
+            "Sign up and save Instagram Facebook YouTube TikTok",
+            "section",
+            0.98,
+            "LAMA RETAIL",
+            "https://pk.lamaretail.com/",
+        )
+    ]
+    lexical = [
+        _chunk(
+            "instagram-link",
+            "Social platform: Instagram URL: https://www.instagram.com/lamaretail/ Link text: Instagram",
+            "social_link",
+            None,
+            "LAMA RETAIL",
+            "https://pk.lamaretail.com/",
+        ),
+        _chunk(
+            "same-as",
+            '{"sameAs": ["https://www.instagram.com/lamaretail/"]}',
+            "structured_data",
+            None,
+            "LAMA RETAIL",
+            "https://pk.lamaretail.com/",
+        ),
+    ]
+    store = FakeVectorStore(weak_vector, lexical)
+
+    results, debug = retrieve_relevant_chunks(
+        "lama",
+        "Give me Instagram link",
+        top_k=2,
+        embedding_service=FakeEmbeddingService(),
+        vector_store=store,
+        include_debug=True,
+    )
+
+    assert results[0]["chunk_type"] == "social_link"
+    assert "https://www.instagram.com/lamaretail/" in results[0]["text"]
+    assert len(results) == 2
+    assert debug["query_intent"] == "social_link"
