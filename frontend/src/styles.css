@@ -227,6 +227,25 @@ button:disabled {
 }
 .chat-msg.user { border: 1px solid rgba(124,58,237,0.4); }
 .chat-msg.assistant { border: 1px solid rgba(34,211,238,0.4); }
+.markdown-message {
+  margin-top: 6px;
+  line-height: 1.5;
+}
+.markdown-message p {
+  margin: 6px 0;
+}
+.markdown-message a {
+  color: #7dd3fc;
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}
+.markdown-list {
+  margin: 6px 0 6px 20px;
+  padding: 0;
+}
+.markdown-list li {
+  margin: 4px 0;
+}
 .sources {
   margin-top: 8px;
   display: grid;

@@ -14,6 +14,84 @@ const Panel = ({ title, subtitle, children }) => (
   </div>
 );
 
+const MARKDOWN_LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g;
+
+const InlineMarkdown = ({ text }) => {
+  const parts = [];
+  let lastIndex = 0;
+  const value = String(text || "");
+
+  for (const match of value.matchAll(MARKDOWN_LINK_RE)) {
+    if (match.index > lastIndex) {
+      parts.push(value.slice(lastIndex, match.index));
+    }
+    parts.push(
+      <a key={`${match[2]}-${match.index}`} href={match[2]} target="_blank" rel="noreferrer">
+        {match[1]}
+      </a>
+    );
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < value.length) {
+    parts.push(value.slice(lastIndex));
+  }
+
+  return parts.length ? parts : value;
+};
+
+const MarkdownMessage = ({ content }) => {
+  const lines = String(content || "").split(/\r?\n/);
+  const blocks = [];
+  let listItems = [];
+  let listType = "";
+
+  const flushList = () => {
+    if (!listItems.length) return;
+    const ListTag = listType === "ol" ? "ol" : "ul";
+    blocks.push(
+      <ListTag key={`list-${blocks.length}`} className="markdown-list">
+        {listItems.map((item, index) => (
+          <li key={`${item}-${index}`}>
+            <InlineMarkdown text={item} />
+          </li>
+        ))}
+      </ListTag>
+    );
+    listItems = [];
+    listType = "";
+  };
+
+  lines.forEach((line, index) => {
+    const bulletMatch = line.match(/^\s*[-*]\s+(.+)$/);
+    const numberedMatch = line.match(/^\s*\d+\.\s+(.+)$/);
+
+    if (bulletMatch || numberedMatch) {
+      const nextType = numberedMatch ? "ol" : "ul";
+      if (listType && listType !== nextType) {
+        flushList();
+      }
+      listType = nextType;
+      listItems.push((bulletMatch?.[1] || numberedMatch?.[1] || "").trim());
+      return;
+    }
+
+    flushList();
+    const trimmed = line.trim();
+    if (!trimmed) {
+      return;
+    }
+    blocks.push(
+      <p key={`p-${index}`}>
+        <InlineMarkdown text={trimmed} />
+      </p>
+    );
+  });
+  flushList();
+
+  return <div className="markdown-message">{blocks}</div>;
+};
+
 export default function App() {
   const [status, setStatus] = useState("Ready.");
   const [forceRefresh, setForceRefresh] = useState(false);
@@ -213,7 +291,12 @@ export default function App() {
                         )}
                         {chatMessages.map((m, idx) => (
                           <div key={idx} className={`chat-msg ${m.role}`}>
-                            <strong>{m.role === "user" ? "You" : siteName}:</strong> {m.content}
+                            <strong>{m.role === "user" ? "You" : siteName}:</strong>
+                            {m.role === "assistant" ? (
+                              <MarkdownMessage content={m.content} />
+                            ) : (
+                              <span> {m.content}</span>
+                            )}
                             {m.role === "assistant" && m.sources?.length ? (
                               <div className="sources">
                                 <div className="sources-title">Sources</div>

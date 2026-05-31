@@ -7,7 +7,9 @@
     "expected_behavior": "Answer from website context and summarize the business clearly.",
     "requires_source": true,
     "hallucination_sensitive": false,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "short_summary",
+    "expected_entities": []
   },
   {
     "id": "smoke_002",
@@ -17,7 +19,11 @@
     "expected_behavior": "Provide website-supported contact methods such as phone, email, WhatsApp, or contact page.",
     "requires_source": true,
     "hallucination_sensitive": false,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "contact_card",
+    "expected_entities": [
+      "phone"
+    ]
   },
   {
     "id": "smoke_003",
@@ -27,7 +33,11 @@
     "expected_behavior": "Return the exact contact number if present. If not present, say the website does not provide enough information.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "contact_card",
+    "expected_entities": [
+      "phone"
+    ]
   },
   {
     "id": "smoke_004",
@@ -37,7 +47,13 @@
     "expected_behavior": "List store locations from website context or say the website does not provide enough information.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "grouped_locations",
+    "expected_entities": [
+      "Lahore",
+      "Karachi",
+      "Islamabad"
+    ]
   },
   {
     "id": "smoke_005",
@@ -47,7 +63,12 @@
     "expected_behavior": "Return the exact Instagram URL if present. Do not invent a profile URL.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "clickable_link",
+    "expected_entities": [
+      "instagram",
+      "instagram.com"
+    ]
   },
   {
     "id": "smoke_006",
@@ -57,7 +78,11 @@
     "expected_behavior": "Give exact delivery time if present; otherwise say not enough information.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "delivery"
+    ]
   },
   {
     "id": "smoke_007",
@@ -67,7 +92,13 @@
     "expected_behavior": "State return policy from website context or say not enough information.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "return",
+      "exchange",
+      "refund"
+    ]
   },
   {
     "id": "smoke_008",
@@ -77,7 +108,9 @@
     "expected_behavior": "List payment methods from website context.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "short_summary",
+    "expected_entities": []
   },
   {
     "id": "smoke_009",
@@ -87,7 +120,14 @@
     "expected_behavior": "Explain damaged/faulty item instructions from website context.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "return",
+      "exchange",
+      "refund",
+      "damaged"
+    ]
   },
   {
     "id": "smoke_010",
@@ -97,6 +137,10 @@
     "expected_behavior": "If the website does not provide this information, the chatbot should clearly say it does not have enough information.",
     "requires_source": false,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "insufficient_info",
+    "expected_entities": [
+      "insufficient information"
+    ]
   }
 ]
