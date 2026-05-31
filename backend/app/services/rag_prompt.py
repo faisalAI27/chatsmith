@@ -1,5 +1,7 @@
 from typing import Any
 
+from .rag_quality import normalize_query
+
 
 MAX_CONTEXT_CHUNKS = 8
 MAX_CHUNK_TEXT_CHARS = 1400
@@ -24,10 +26,11 @@ def build_rag_context(retrieved_chunks: list[dict]) -> str:
             "\n".join(
                 [
                     f"[Source {index}]",
-                    f"Page title: {page_title}",
-                    f"URL: {source_url}",
-                    f"Chunk type: {chunk_type}{score_text}",
-                    f"Content: {text[:MAX_CHUNK_TEXT_CHARS]}",
+                    f"Title: {page_title}",
+                    f"Type: {chunk_type}{score_text}",
+                    f"URL: {source_url or 'Not available'}",
+                    "Content:",
+                    text[:MAX_CHUNK_TEXT_CHARS],
                 ]
             )
         )
@@ -43,10 +46,13 @@ def build_rag_messages(
     context = build_rag_context(retrieved_chunks)
     system_message = (
         "You are ChatSMITH's retrieval-grounded website assistant.\n"
-        "Answer only from the retrieved website context below.\n"
-        "If the context does not contain enough information, say the website does not provide enough information.\n"
+        "Answer only from the retrieved public website context below.\n"
+        "If the context does not contain enough information, say: "
+        "\"The website does not provide enough information.\" Then briefly explain what is missing.\n"
         "Do not invent details, prices, policies, dates, or contact information.\n"
-        "Be concise and helpful. Source links are provided separately by the application.\n\n"
+        "Do not rely on general knowledge outside the context.\n"
+        "Keep a helpful tone and be concise.\n"
+        "Source links are provided separately by the application, so avoid raw URLs in the answer unless the user asks for them.\n\n"
         "=== RETRIEVED WEBSITE CONTEXT ===\n"
         f"{context or 'No relevant context was retrieved.'}\n"
         "=== END CONTEXT ==="
@@ -55,7 +61,7 @@ def build_rag_messages(
     messages = [{"role": "system", "content": system_message}]
     prior_history = _history_without_latest_question(chat_history or [], question)
     messages.extend(prior_history[-6:])
-    messages.append({"role": "user", "content": _clean_text(question)})
+    messages.append({"role": "user", "content": normalize_query(question)})
     return messages
 
 
@@ -73,7 +79,9 @@ def format_sources(retrieved_chunks: list[dict], max_sources: int = 5) -> list[d
         if not source_url and not text:
             continue
 
-        key = source_url or chunk.get("chunk_id") or text[:80]
+        key = (source_url, page_title, chunk_type) if source_url or page_title else (
+            chunk.get("chunk_id") or text[:80]
+        )
         if key in seen_keys:
             continue
         seen_keys.add(key)
@@ -83,7 +91,8 @@ def format_sources(retrieved_chunks: list[dict], max_sources: int = 5) -> list[d
                 "page_title": page_title,
                 "chunk_type": chunk_type,
                 "score": chunk.get("score"),
-                "text_preview": text[:MAX_SOURCE_PREVIEW_CHARS],
+                "distance": chunk.get("distance"),
+                "text_preview": _truncate_preview(text),
             }
         )
         if len(sources) >= max_sources:
@@ -110,3 +119,9 @@ def _history_without_latest_question(chat_history: list[dict], question: str) ->
 
 def _clean_text(value: Any) -> str:
     return " ".join(str(value or "").split())
+
+
+def _truncate_preview(text: str) -> str:
+    if len(text) <= MAX_SOURCE_PREVIEW_CHARS:
+        return text
+    return text[:MAX_SOURCE_PREVIEW_CHARS].rstrip() + "..."
