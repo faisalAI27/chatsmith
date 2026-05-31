@@ -10,6 +10,12 @@ from ..services.metrics_logger import (
     metrics_enabled,
 )
 from ..services.rag_prompt import build_rag_messages, format_sources
+from ..services.rag_quality import (
+    build_retrieval_debug_summary,
+    detect_low_quality_retrieval,
+    is_context_sufficient,
+    validate_sources,
+)
 from ..services.retrieval_service import retrieve_relevant_chunks
 
 router = APIRouter()
@@ -43,7 +49,10 @@ async def chat(req: ChatRequest):
                 return _run_legacy_prompt_chat(req, warnings=warnings)
             raise HTTPException(status_code=503, detail=warnings[-1])
 
-        if retrieved_chunks:
+        retrieval_debug = build_retrieval_debug_summary(retrieved_chunks)
+        warnings.extend(detect_low_quality_retrieval(retrieved_chunks))
+
+        if retrieved_chunks and is_context_sufficient(retrieved_chunks):
             messages = build_rag_messages(
                 question=question,
                 chat_history=[message.model_dump() for message in req.messages],
@@ -51,29 +60,28 @@ async def chat(req: ChatRequest):
             )
             answer = _call_openai_chat(messages)
             sources = format_sources(retrieved_chunks)
+            warnings.extend(validate_sources(sources))
             _log_chat_if_enabled(question=question, answer=answer, provenance="rag")
             return ChatResponse(
                 message=ChatMessage(role="assistant", content=answer),
                 answer=answer,
                 sources=sources,
                 mode="rag",
-                warnings=warnings,
+                warnings=_dedupe_warnings(warnings),
+                retrieval_debug=retrieval_debug,
                 metadata={"website_id": req.website_id, "retrieved_chunks": len(retrieved_chunks)},
             )
 
-        warnings.append("No relevant indexed chunks were found for this website.")
         if req.system_prompt:
             return _run_legacy_prompt_chat(req, warnings=warnings)
-        answer = (
-            "I could not find relevant indexed website context for that question. "
-            "The website may need to be generated or reindexed first."
-        )
+        answer = "The website does not provide enough information from indexed context to answer that question."
         return ChatResponse(
             message=ChatMessage(role="assistant", content=answer),
             answer=answer,
             sources=[],
             mode="rag",
-            warnings=warnings,
+            warnings=_dedupe_warnings(warnings),
+            retrieval_debug=retrieval_debug,
             metadata={"website_id": req.website_id, "retrieved_chunks": 0},
         )
 
@@ -96,7 +104,7 @@ def _run_legacy_prompt_chat(req: ChatRequest, warnings: List[str] | None = None)
         answer=answer,
         sources=[],
         mode="legacy_prompt",
-        warnings=warnings or [],
+        warnings=_dedupe_warnings(warnings or []),
     )
 
 
@@ -138,3 +146,11 @@ def _log_chat_if_enabled(question: str, answer: str, provenance: str) -> None:
         )
     except Exception as log_exc:
         print(f"⚠️ Metrics logging skipped: {log_exc}")
+
+
+def _dedupe_warnings(warnings: List[str]) -> List[str]:
+    deduped = []
+    for warning in warnings:
+        if warning and warning not in deduped:
+            deduped.append(warning)
+    return deduped

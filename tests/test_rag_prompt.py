@@ -36,7 +36,9 @@ def test_build_rag_context_includes_retrieved_chunk_text_and_source_labels():
     assert "[Source 1]" in context
     assert "automation consulting" in context
     assert "https://example.com/services" in context
-    assert "Chunk type: section" in context
+    assert "Title: Services" in context
+    assert "Type: section" in context
+    assert "Content:" in context
 
 
 def test_build_rag_messages_uses_retrieved_context_without_legacy_prompt():
@@ -52,7 +54,9 @@ def test_build_rag_messages_uses_retrieved_context_without_legacy_prompt():
 
     system_content = messages[0]["content"]
     assert messages[0]["role"] == "system"
-    assert "Answer only from the retrieved website context" in system_content
+    assert "Answer only from the retrieved public website context" in system_content
+    assert "The website does not provide enough information" in system_content
+    assert "Do not invent details" in system_content
     assert "automation consulting" in system_content
     assert "FULL LEGACY SYSTEM PROMPT" not in system_content
     assert messages[-1] == {"role": "user", "content": "What services are offered?"}
@@ -63,12 +67,36 @@ def test_build_rag_messages_uses_retrieved_context_without_legacy_prompt():
 def test_format_sources_deduplicates_by_source_url_and_keeps_preview():
     sources = format_sources(_chunks())
 
-    assert len(sources) == 2
+    assert len(sources) == 3
     assert sources[0] == {
         "source_url": "https://example.com/services",
         "page_title": "Services",
         "chunk_type": "section",
         "score": 0.92,
+        "distance": None,
         "text_preview": "The website offers automation consulting and implementation support.",
     }
-    assert sources[1]["source_url"] == "https://example.com/pricing"
+    assert sources[1]["chunk_type"] == "faq"
+    assert sources[2]["source_url"] == "https://example.com/pricing"
+
+
+def test_format_sources_truncates_previews_and_handles_missing_metadata():
+    long_text = "A" * 300
+    sources = format_sources(
+        [
+            {
+                "chunk_id": "missing-metadata",
+                "text": long_text,
+                "score": None,
+                "source_url": "",
+                "page_title": "",
+                "chunk_type": "",
+            }
+        ]
+    )
+
+    assert sources[0]["source_url"] == ""
+    assert sources[0]["page_title"] == ""
+    assert sources[0]["chunk_type"] == ""
+    assert len(sources[0]["text_preview"]) == 243
+    assert sources[0]["text_preview"].endswith("...")

@@ -89,6 +89,9 @@ async def test_chat_uses_rag_retrieval_when_website_id_is_provided(monkeypatch):
     assert response.answer == "The site offers workflow automation services."
     assert response.message.content == response.answer
     assert response.sources[0].source_url == "https://example.com/services"
+    assert response.retrieval_debug["chunks_retrieved"] == 2
+    assert response.retrieval_debug["chunk_types"] == {"faq": 1, "section": 1}
+    assert response.warnings == []
     assert calls["website_id"] == "site-a"
     assert calls["query"] == "What services are offered?"
 
@@ -144,8 +147,71 @@ async def test_chat_returns_warning_when_no_chunks_and_no_fallback(monkeypatch):
     assert response.mode == "rag"
     assert response.sources == []
     assert response.metadata["retrieved_chunks"] == 0
+    assert response.retrieval_debug["chunks_retrieved"] == 0
     assert "No relevant indexed chunks" in response.warnings[0]
-    assert "could not find relevant indexed website context" in response.answer
+    assert "does not provide enough information" in response.answer
+
+
+@pytest.mark.asyncio
+async def test_chat_warns_and_skips_openai_when_retrieved_chunks_are_weak(monkeypatch):
+    monkeypatch.setattr(
+        chat_api,
+        "retrieve_relevant_chunks",
+        lambda *args, **kwargs: [
+            {"text": "", "source_url": "", "page_title": "", "chunk_type": "section"}
+        ],
+    )
+    monkeypatch.setattr(
+        chat_api,
+        "get_openai_client",
+        lambda: (_ for _ in ()).throw(AssertionError("OpenAI should not be called")),
+    )
+
+    response = await chat_api.chat(
+        ChatRequest(
+            website_id="site-a",
+            messages=[ChatMessage(role="user", content="What services?")],
+        )
+    )
+
+    assert response.mode == "rag"
+    assert response.retrieval_debug["usable_chunks"] == 0
+    assert "Retrieved chunks did not contain enough readable website text." in response.warnings
+    assert "does not provide enough information" in response.answer
+
+
+@pytest.mark.asyncio
+async def test_chat_handles_missing_source_metadata_without_crashing(monkeypatch):
+    fake_client = FakeOpenAIClient(answer="Answer from weak metadata.")
+    monkeypatch.setattr(
+        chat_api,
+        "retrieve_relevant_chunks",
+        lambda *args, **kwargs: [
+            {
+                "chunk_id": "c1",
+                "text": "This website offers car inspection booking for customers.",
+                "score": 0.7,
+                "source_url": "",
+                "page_title": "",
+                "chunk_type": "section",
+            }
+        ],
+    )
+    monkeypatch.setattr(chat_api, "get_openai_client", lambda: fake_client)
+
+    response = await chat_api.chat(
+        ChatRequest(
+            website_id="site-a",
+            messages=[ChatMessage(role="user", content="Does this site offer inspection?")],
+        )
+    )
+
+    assert response.mode == "rag"
+    assert response.sources[0].source_url == ""
+    assert "Some retrieved chunks are missing source URLs." in response.warnings
+    assert "Some retrieved chunks are missing page titles." in response.warnings
+    assert "Source 1 is missing source_url." in response.warnings
+    assert "Source 1 is missing page_title." in response.warnings
 
 
 @pytest.mark.asyncio

@@ -174,6 +174,22 @@ After `/api/jobs/run` completes, the job stats include `website_id`, `chunk_coun
 
 If retrieval fails or no chunks are available, `/api/chat` uses the legacy `system_prompt` fallback when present. RAG answers are limited to scraped/indexed website context; the model should say when the retrieved context does not provide enough information.
 
+### Manual RAG quality checks
+
+After generating a chatbot for a site such as PakWheels, ask a mix of answerable and unanswerable questions:
+
+- What services does this website offer?
+- Does this website offer car inspection?
+- How can I contact them?
+- Who is the CEO of Tesla?
+
+Expected behavior:
+
+- website-related questions answer from retrieved chunks and show sources under the answer,
+- unrelated questions say the website does not provide enough information,
+- `/api/chat` returns `mode: "rag"` when `website_id` and vector index are available,
+- response `warnings` and `retrieval_debug` explain weak or missing retrieval context without breaking the chat flow.
+
 ### Usage
 - Generate chatbot: paste URL, optional Force refresh → Run. A brief summary (pages scraped, web searches) shows, then the chatbot appears.
 - Ask questions in the chat panel after generation completes.

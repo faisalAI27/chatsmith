@@ -21,6 +21,7 @@ class ChatSource(BaseModel):
     page_title: str = ""
     chunk_type: str = ""
     score: Optional[float] = None
+    distance: Optional[float] = None
     text_preview: str = ""
 
 
@@ -30,4 +31,5 @@ class ChatResponse(BaseModel):
     sources: List[ChatSource] = Field(default_factory=list)
     mode: str = "legacy_prompt"
     warnings: List[str] = Field(default_factory=list)
+    retrieval_debug: dict[str, Any] = Field(default_factory=dict)
     metadata: dict[str, Any] = Field(default_factory=dict)
