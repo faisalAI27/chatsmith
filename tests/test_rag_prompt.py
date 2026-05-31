@@ -141,3 +141,19 @@ def test_rag_prompt_distinguishes_platform_mentions_without_links():
     system_content = messages[0]["content"]
     assert "If a platform is mentioned but no URL is present" in system_content
     assert "Do not invent details" in system_content
+
+
+def test_rag_prompt_includes_customer_service_formatting_rules():
+    messages = build_rag_messages(
+        question="Where are their stores located?",
+        chat_history=[],
+        retrieved_chunks=_chunks(),
+    )
+
+    system_content = messages[0]["content"]
+    assert "Answer like a professional customer support assistant." in system_content
+    assert "use Markdown formatting" in system_content
+    assert "For contact questions" in system_content
+    assert "For store location questions, group by city" in system_content
+    assert "For policy questions" in system_content
+    assert "For product questions" in system_content

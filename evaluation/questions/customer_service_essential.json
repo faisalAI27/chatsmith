@@ -1,0 +1,571 @@
+[
+  {
+    "id": "essential_business_001",
+    "category": "business_overview",
+    "intent": "business_summary",
+    "question": "What is this website about?",
+    "expected_behavior": "Answer from website context and summarize the business clearly.",
+    "requires_source": true,
+    "hallucination_sensitive": false,
+    "manual_review_required": true,
+    "answer_format": "short_summary",
+    "expected_entities": []
+  },
+  {
+    "id": "essential_business_002",
+    "category": "business_overview",
+    "intent": "products_or_services_summary",
+    "question": "What does this company sell or offer?",
+    "expected_behavior": "Use website context to explain what the company sells or offers.",
+    "requires_source": true,
+    "hallucination_sensitive": false,
+    "manual_review_required": true,
+    "answer_format": "product_list",
+    "expected_entities": [
+      "product"
+    ]
+  },
+  {
+    "id": "essential_business_003",
+    "category": "business_overview",
+    "intent": "services_summary",
+    "question": "What services does this website provide?",
+    "expected_behavior": "Answer only from retrieved website context and avoid adding services not shown on the site.",
+    "requires_source": true,
+    "hallucination_sensitive": false,
+    "manual_review_required": true,
+    "answer_format": "short_summary",
+    "expected_entities": []
+  },
+  {
+    "id": "essential_contact_001",
+    "category": "contact_support",
+    "intent": "contact_options",
+    "question": "How can I contact them?",
+    "expected_behavior": "Provide website-supported contact methods such as phone, email, WhatsApp, or contact page.",
+    "requires_source": true,
+    "hallucination_sensitive": false,
+    "manual_review_required": true,
+    "answer_format": "contact_card",
+    "expected_entities": [
+      "phone"
+    ]
+  },
+  {
+    "id": "essential_contact_002",
+    "category": "contact_support",
+    "intent": "phone_number",
+    "question": "What is their contact number?",
+    "expected_behavior": "Return the exact contact number if present. If not present, say the website does not provide enough information.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "contact_card",
+    "expected_entities": [
+      "phone"
+    ]
+  },
+  {
+    "id": "essential_contact_003",
+    "category": "contact_support",
+    "intent": "whatsapp_support",
+    "question": "Do they have WhatsApp support?",
+    "expected_behavior": "Answer yes/no from website context and include the WhatsApp number or link if available.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "contact_card",
+    "expected_entities": [
+      "phone",
+      "WhatsApp"
+    ]
+  },
+  {
+    "id": "essential_contact_004",
+    "category": "contact_support",
+    "intent": "customer_service_hours",
+    "question": "What are their customer service hours?",
+    "expected_behavior": "Give exact support hours if present; otherwise say the website does not provide enough information.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "contact_card",
+    "expected_entities": [
+      "phone",
+      "hours"
+    ]
+  },
+  {
+    "id": "essential_contact_005",
+    "category": "contact_support",
+    "intent": "email_address",
+    "question": "Do they provide an email address?",
+    "expected_behavior": "Return the exact email address if present; otherwise say the website does not provide enough information.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "contact_card",
+    "expected_entities": [
+      "phone",
+      "email"
+    ]
+  },
+  {
+    "id": "essential_contact_006",
+    "category": "contact_support",
+    "intent": "complaint_help",
+    "question": "How can I complain or ask for help?",
+    "expected_behavior": "Use website-supported help, complaint, customer service, email, phone, or contact page details.",
+    "requires_source": true,
+    "hallucination_sensitive": false,
+    "manual_review_required": true,
+    "answer_format": "contact_card",
+    "expected_entities": [
+      "phone"
+    ]
+  },
+  {
+    "id": "essential_stores_001",
+    "category": "store_locations",
+    "intent": "all_locations",
+    "question": "Where are their stores located?",
+    "expected_behavior": "List store locations from website context or say the website does not provide enough information.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "grouped_locations",
+    "expected_entities": [
+      "Lahore",
+      "Karachi",
+      "Islamabad"
+    ]
+  },
+  {
+    "id": "essential_stores_002",
+    "category": "store_locations",
+    "intent": "all_locations",
+    "question": "Give me all store locations.",
+    "expected_behavior": "List all store locations found in the website context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "grouped_locations",
+    "expected_entities": [
+      "Lahore",
+      "Karachi",
+      "Islamabad"
+    ]
+  },
+  {
+    "id": "essential_stores_003",
+    "category": "store_locations",
+    "intent": "city_location",
+    "question": "Do they have a store in Lahore?",
+    "expected_behavior": "Answer from store-location context and include Lahore location details if available.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "grouped_locations",
+    "expected_entities": [
+      "Lahore",
+      "Karachi",
+      "Islamabad"
+    ]
+  },
+  {
+    "id": "essential_stores_004",
+    "category": "store_locations",
+    "intent": "city_location",
+    "question": "Do they have a store in Karachi?",
+    "expected_behavior": "Answer from store-location context and include Karachi location details if available.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "grouped_locations",
+    "expected_entities": [
+      "Lahore",
+      "Karachi",
+      "Islamabad"
+    ]
+  },
+  {
+    "id": "essential_stores_005",
+    "category": "store_locations",
+    "intent": "city_location",
+    "question": "Do they have a store in Islamabad?",
+    "expected_behavior": "Answer from store-location context and include Islamabad location details if available.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "grouped_locations",
+    "expected_entities": [
+      "Lahore",
+      "Karachi",
+      "Islamabad"
+    ]
+  },
+  {
+    "id": "essential_social_001",
+    "category": "social_links",
+    "intent": "instagram_link",
+    "question": "Give me their Instagram link.",
+    "expected_behavior": "Return the exact Instagram URL as a Markdown link if present. Do not invent a profile URL.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "clickable_link",
+    "expected_entities": [
+      "instagram",
+      "instagram.com"
+    ]
+  },
+  {
+    "id": "essential_social_002",
+    "category": "social_links",
+    "intent": "facebook_link",
+    "question": "Give me their Facebook link.",
+    "expected_behavior": "Return the exact Facebook URL as a Markdown link if present. Do not invent a profile URL.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "clickable_link",
+    "expected_entities": [
+      "facebook",
+      "facebook.com"
+    ]
+  },
+  {
+    "id": "essential_social_003",
+    "category": "social_links",
+    "intent": "youtube_link",
+    "question": "Give me their YouTube link.",
+    "expected_behavior": "Return the exact YouTube URL as a Markdown link if present. Do not invent a channel URL.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "clickable_link",
+    "expected_entities": [
+      "youtube",
+      "youtube.com"
+    ]
+  },
+  {
+    "id": "essential_social_004",
+    "category": "social_links",
+    "intent": "all_social_links",
+    "question": "Give me all social media links.",
+    "expected_behavior": "List all social media URLs found in website context as Markdown links.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "clickable_link",
+    "expected_entities": [
+      "instagram",
+      "instagram.com",
+      "facebook",
+      "facebook.com",
+      "youtube",
+      "youtube.com",
+      "tiktok",
+      "tiktok.com"
+    ]
+  },
+  {
+    "id": "essential_social_005",
+    "category": "social_links",
+    "intent": "tiktok_presence",
+    "question": "Do they have TikTok?",
+    "expected_behavior": "Answer from website context and include the TikTok URL if available.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "clickable_link",
+    "expected_entities": [
+      "tiktok",
+      "tiktok.com"
+    ]
+  },
+  {
+    "id": "essential_shipping_001",
+    "category": "delivery_shipping",
+    "intent": "delivery_time",
+    "question": "How long does delivery take?",
+    "expected_behavior": "Give exact delivery time if present; otherwise say not enough information.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "delivery"
+    ]
+  },
+  {
+    "id": "essential_shipping_002",
+    "category": "delivery_shipping",
+    "intent": "international_delivery",
+    "question": "Do they deliver outside the country?",
+    "expected_behavior": "Answer from website context; do not infer international shipping.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "delivery"
+    ]
+  },
+  {
+    "id": "essential_shipping_003",
+    "category": "delivery_shipping",
+    "intent": "order_tracking",
+    "question": "How can I track my order?",
+    "expected_behavior": "Explain order tracking only if the website provides tracking information.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "delivery",
+      "tracking"
+    ]
+  },
+  {
+    "id": "essential_returns_001",
+    "category": "return_refund_exchange",
+    "intent": "return_policy",
+    "question": "What is their return policy?",
+    "expected_behavior": "State return policy from website context or say not enough information.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "return",
+      "exchange",
+      "refund"
+    ]
+  },
+  {
+    "id": "essential_returns_002",
+    "category": "return_refund_exchange",
+    "intent": "exchange_policy",
+    "question": "Can I exchange a product?",
+    "expected_behavior": "State exchange policy and time limit if present.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "return",
+      "exchange",
+      "refund"
+    ]
+  },
+  {
+    "id": "essential_returns_003",
+    "category": "return_refund_exchange",
+    "intent": "refund_policy",
+    "question": "Can I get a refund?",
+    "expected_behavior": "State refund policy from website context or say not enough information.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "return",
+      "exchange",
+      "refund"
+    ]
+  },
+  {
+    "id": "essential_returns_004",
+    "category": "return_refund_exchange",
+    "intent": "damaged_product",
+    "question": "What if I receive a damaged product?",
+    "expected_behavior": "Explain damaged/faulty item instructions from website context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "return",
+      "exchange",
+      "refund",
+      "damaged"
+    ]
+  },
+  {
+    "id": "essential_returns_005",
+    "category": "return_refund_exchange",
+    "intent": "order_cancellation",
+    "question": "Can I cancel my order?",
+    "expected_behavior": "State cancellation policy only if present.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "return",
+      "exchange",
+      "refund",
+      "cancel"
+    ]
+  },
+  {
+    "id": "essential_payment_001",
+    "category": "payment",
+    "intent": "payment_methods",
+    "question": "What payment methods are available?",
+    "expected_behavior": "List payment methods from website context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "short_summary",
+    "expected_entities": []
+  },
+  {
+    "id": "essential_payment_002",
+    "category": "payment",
+    "intent": "cod",
+    "question": "Do they support cash on delivery?",
+    "expected_behavior": "Answer yes/no from payment context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "delivery"
+    ]
+  },
+  {
+    "id": "essential_payment_003",
+    "category": "payment",
+    "intent": "card_payment",
+    "question": "Can I pay by card?",
+    "expected_behavior": "Answer yes/no from payment context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "short_summary",
+    "expected_entities": []
+  },
+  {
+    "id": "essential_payment_004",
+    "category": "payment",
+    "intent": "payment_safety",
+    "question": "Is online payment safe?",
+    "expected_behavior": "Use website context about payment safety/security only.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "short_summary",
+    "expected_entities": []
+  },
+  {
+    "id": "essential_natural_001",
+    "category": "natural_customer_language",
+    "intent": "contact_options",
+    "question": "bro how can i contact them?",
+    "expected_behavior": "Answer naturally while using only website-supported contact details.",
+    "requires_source": true,
+    "hallucination_sensitive": false,
+    "manual_review_required": true,
+    "answer_format": "contact_card",
+    "expected_entities": [
+      "phone"
+    ]
+  },
+  {
+    "id": "essential_natural_002",
+    "category": "natural_customer_language",
+    "intent": "instagram_presence",
+    "question": "do they have insta?",
+    "expected_behavior": "Map informal language to Instagram and answer from website context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "short_summary",
+    "expected_entities": []
+  },
+  {
+    "id": "essential_natural_003",
+    "category": "natural_customer_language",
+    "intent": "city_location",
+    "question": "where is their Lahore branch?",
+    "expected_behavior": "Answer from store-location context and include Lahore address if available.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "grouped_locations",
+    "expected_entities": [
+      "Lahore"
+    ]
+  },
+  {
+    "id": "essential_natural_004",
+    "category": "natural_customer_language",
+    "intent": "cod",
+    "question": "is COD available?",
+    "expected_behavior": "Map COD to cash on delivery and answer from payment context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "short_summary",
+    "expected_entities": []
+  },
+  {
+    "id": "essential_natural_005",
+    "category": "natural_customer_language",
+    "intent": "damaged_product",
+    "question": "what if my order is damaged?",
+    "expected_behavior": "Answer from damaged/faulty item policy context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "damaged"
+    ]
+  },
+  {
+    "id": "essential_hallucination_001",
+    "category": "hallucination_resistance",
+    "intent": "unknown_ceo",
+    "question": "Who is the CEO of this company?",
+    "expected_behavior": "If the website does not provide this information, the chatbot should clearly say it does not have enough information.",
+    "requires_source": false,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "insufficient_info",
+    "expected_entities": [
+      "insufficient information"
+    ]
+  },
+  {
+    "id": "essential_hallucination_002",
+    "category": "hallucination_resistance",
+    "intent": "unknown_revenue",
+    "question": "What is their monthly revenue?",
+    "expected_behavior": "If the website does not provide this information, the chatbot should clearly say it does not have enough information.",
+    "requires_source": false,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "insufficient_info",
+    "expected_entities": [
+      "insufficient information"
+    ]
+  },
+  {
+    "id": "essential_hallucination_003",
+    "category": "hallucination_resistance",
+    "intent": "unknown_employees",
+    "question": "How many total employees do they have?",
+    "expected_behavior": "If the website does not provide this information, the chatbot should clearly say it does not have enough information.",
+    "requires_source": false,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "insufficient_info",
+    "expected_entities": [
+      "insufficient information"
+    ]
+  }
+]

@@ -7,7 +7,9 @@
     "expected_behavior": "Answer from website context and summarize the business clearly.",
     "requires_source": true,
     "hallucination_sensitive": false,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "short_summary",
+    "expected_entities": []
   },
   {
     "id": "business_002",
@@ -17,7 +19,11 @@
     "expected_behavior": "Use website context to explain what the company sells or offers.",
     "requires_source": true,
     "hallucination_sensitive": false,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "product_list",
+    "expected_entities": [
+      "product"
+    ]
   },
   {
     "id": "business_003",
@@ -27,7 +33,9 @@
     "expected_behavior": "Answer only from retrieved website context and avoid adding services not shown on the site.",
     "requires_source": true,
     "hallucination_sensitive": false,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "short_summary",
+    "expected_entities": []
   },
   {
     "id": "business_004",
@@ -37,7 +45,9 @@
     "expected_behavior": "Give a concise plain-language summary using website context.",
     "requires_source": true,
     "hallucination_sensitive": false,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "short_summary",
+    "expected_entities": []
   },
   {
     "id": "business_005",
@@ -47,7 +57,9 @@
     "expected_behavior": "Describe the likely audience only if the website provides enough context.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "short_summary",
+    "expected_entities": []
   },
   {
     "id": "contact_001",
@@ -57,7 +69,11 @@
     "expected_behavior": "Provide website-supported contact methods such as phone, email, WhatsApp, or contact page.",
     "requires_source": true,
     "hallucination_sensitive": false,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "contact_card",
+    "expected_entities": [
+      "phone"
+    ]
   },
   {
     "id": "contact_002",
@@ -67,7 +83,11 @@
     "expected_behavior": "Return the exact contact number if present. If not present, say the website does not provide enough information.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "contact_card",
+    "expected_entities": [
+      "phone"
+    ]
   },
   {
     "id": "contact_003",
@@ -77,7 +97,12 @@
     "expected_behavior": "Answer yes/no from website context and include the WhatsApp number or link if available.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "contact_card",
+    "expected_entities": [
+      "phone",
+      "WhatsApp"
+    ]
   },
   {
     "id": "contact_004",
@@ -87,7 +112,12 @@
     "expected_behavior": "Give exact support hours if present; otherwise say the website does not provide enough information.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "contact_card",
+    "expected_entities": [
+      "phone",
+      "hours"
+    ]
   },
   {
     "id": "contact_005",
@@ -97,7 +127,12 @@
     "expected_behavior": "Return the exact email address if present; otherwise say the website does not provide enough information.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "contact_card",
+    "expected_entities": [
+      "phone",
+      "email"
+    ]
   },
   {
     "id": "contact_006",
@@ -107,7 +142,11 @@
     "expected_behavior": "Use website-supported help, complaint, customer service, email, phone, or contact page details.",
     "requires_source": true,
     "hallucination_sensitive": false,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "contact_card",
+    "expected_entities": [
+      "phone"
+    ]
   },
   {
     "id": "stores_001",
@@ -117,7 +156,13 @@
     "expected_behavior": "List store locations from website context or say the website does not provide enough information.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "grouped_locations",
+    "expected_entities": [
+      "Lahore",
+      "Karachi",
+      "Islamabad"
+    ]
   },
   {
     "id": "stores_002",
@@ -127,7 +172,13 @@
     "expected_behavior": "Answer from store-location context and include location details if available.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "grouped_locations",
+    "expected_entities": [
+      "Lahore",
+      "Karachi",
+      "Islamabad"
+    ]
   },
   {
     "id": "stores_003",
@@ -137,7 +188,13 @@
     "expected_behavior": "Answer from store-location context and include location details if available.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "grouped_locations",
+    "expected_entities": [
+      "Lahore",
+      "Karachi",
+      "Islamabad"
+    ]
   },
   {
     "id": "stores_004",
@@ -147,7 +204,13 @@
     "expected_behavior": "Answer from store-location context and include location details if available.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "grouped_locations",
+    "expected_entities": [
+      "Lahore",
+      "Karachi",
+      "Islamabad"
+    ]
   },
   {
     "id": "stores_005",
@@ -157,7 +220,13 @@
     "expected_behavior": "List all store locations found in the website context.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "grouped_locations",
+    "expected_entities": [
+      "Lahore",
+      "Karachi",
+      "Islamabad"
+    ]
   },
   {
     "id": "stores_006",
@@ -167,7 +236,13 @@
     "expected_behavior": "List mall names only if present in website context.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "grouped_locations",
+    "expected_entities": [
+      "Lahore",
+      "Karachi",
+      "Islamabad"
+    ]
   },
   {
     "id": "social_001",
@@ -177,7 +252,12 @@
     "expected_behavior": "Answer from website context and include the Instagram URL if available.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "clickable_link",
+    "expected_entities": [
+      "instagram",
+      "instagram.com"
+    ]
   },
   {
     "id": "social_002",
@@ -187,7 +267,12 @@
     "expected_behavior": "Return the exact Instagram URL if present. Do not invent a profile URL.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "clickable_link",
+    "expected_entities": [
+      "instagram",
+      "instagram.com"
+    ]
   },
   {
     "id": "social_003",
@@ -197,7 +282,12 @@
     "expected_behavior": "Return the exact Facebook URL if present. Do not invent a profile URL.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "clickable_link",
+    "expected_entities": [
+      "facebook",
+      "facebook.com"
+    ]
   },
   {
     "id": "social_004",
@@ -207,7 +297,12 @@
     "expected_behavior": "Return the exact YouTube URL if present. Do not invent a channel URL.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "clickable_link",
+    "expected_entities": [
+      "youtube",
+      "youtube.com"
+    ]
   },
   {
     "id": "social_005",
@@ -217,7 +312,18 @@
     "expected_behavior": "List all social media URLs found in website context.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "clickable_link",
+    "expected_entities": [
+      "instagram",
+      "instagram.com",
+      "facebook",
+      "facebook.com",
+      "youtube",
+      "youtube.com",
+      "tiktok",
+      "tiktok.com"
+    ]
   },
   {
     "id": "social_006",
@@ -227,7 +333,12 @@
     "expected_behavior": "Answer from website context and include the TikTok URL if available.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "clickable_link",
+    "expected_entities": [
+      "tiktok",
+      "tiktok.com"
+    ]
   },
   {
     "id": "products_001",
@@ -237,7 +348,11 @@
     "expected_behavior": "Summarize product categories or examples from website context.",
     "requires_source": true,
     "hallucination_sensitive": false,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "product_list",
+    "expected_entities": [
+      "product"
+    ]
   },
   {
     "id": "products_002",
@@ -247,7 +362,12 @@
     "expected_behavior": "Answer yes/no from product context; do not infer if the website does not say.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "product_list",
+    "expected_entities": [
+      "product",
+      "shoes"
+    ]
   },
   {
     "id": "products_003",
@@ -257,7 +377,12 @@
     "expected_behavior": "Answer yes/no from product context; do not infer if the website does not say.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "product_list",
+    "expected_entities": [
+      "product",
+      "shirts"
+    ]
   },
   {
     "id": "products_004",
@@ -267,7 +392,12 @@
     "expected_behavior": "Answer yes/no from product context; do not infer if the website does not say.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "product_list",
+    "expected_entities": [
+      "product",
+      "pants"
+    ]
   },
   {
     "id": "products_005",
@@ -277,7 +407,11 @@
     "expected_behavior": "Name featured products only if present in the website context.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "product_list",
+    "expected_entities": [
+      "product"
+    ]
   },
   {
     "id": "products_006",
@@ -287,7 +421,11 @@
     "expected_behavior": "Describe one product using product page context.",
     "requires_source": true,
     "hallucination_sensitive": false,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "product_list",
+    "expected_entities": [
+      "product"
+    ]
   },
   {
     "id": "products_007",
@@ -297,7 +435,12 @@
     "expected_behavior": "Give a price only if a specific product and price are present in context; otherwise ask for a product or say not enough information.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "product_list",
+    "expected_entities": [
+      "product",
+      "price"
+    ]
   },
   {
     "id": "products_008",
@@ -307,7 +450,12 @@
     "expected_behavior": "List sizes only if present in product context.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "product_list",
+    "expected_entities": [
+      "product",
+      "size"
+    ]
   },
   {
     "id": "products_009",
@@ -317,7 +465,12 @@
     "expected_behavior": "List colors only if present in product context.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "product_list",
+    "expected_entities": [
+      "product",
+      "color"
+    ]
   },
   {
     "id": "shipping_001",
@@ -327,7 +480,11 @@
     "expected_behavior": "Answer from website shipping/delivery context.",
     "requires_source": true,
     "hallucination_sensitive": false,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "delivery"
+    ]
   },
   {
     "id": "shipping_002",
@@ -337,7 +494,11 @@
     "expected_behavior": "Give exact delivery time if present; otherwise say not enough information.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "delivery"
+    ]
   },
   {
     "id": "shipping_003",
@@ -347,7 +508,11 @@
     "expected_behavior": "Answer from website context; do not infer international shipping.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "delivery"
+    ]
   },
   {
     "id": "shipping_004",
@@ -357,7 +522,11 @@
     "expected_behavior": "Name delivery/courier services only if listed on the website.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "delivery"
+    ]
   },
   {
     "id": "shipping_005",
@@ -367,7 +536,11 @@
     "expected_behavior": "Provide delivery charge details only if present.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "delivery"
+    ]
   },
   {
     "id": "shipping_006",
@@ -377,7 +550,12 @@
     "expected_behavior": "Explain order tracking only if the website provides tracking information.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "delivery",
+      "tracking"
+    ]
   },
   {
     "id": "returns_001",
@@ -387,7 +565,13 @@
     "expected_behavior": "State return policy from website context or say not enough information.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "return",
+      "exchange",
+      "refund"
+    ]
   },
   {
     "id": "returns_002",
@@ -397,7 +581,13 @@
     "expected_behavior": "State exchange policy and time limit if present.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "return",
+      "exchange",
+      "refund"
+    ]
   },
   {
     "id": "returns_003",
@@ -407,7 +597,13 @@
     "expected_behavior": "State refund policy from website context or say not enough information.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "return",
+      "exchange",
+      "refund"
+    ]
   },
   {
     "id": "returns_004",
@@ -417,7 +613,13 @@
     "expected_behavior": "Give the return/exchange window only if present.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "return",
+      "exchange",
+      "refund"
+    ]
   },
   {
     "id": "returns_005",
@@ -427,7 +629,14 @@
     "expected_behavior": "Explain damaged/faulty item instructions from website context.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "return",
+      "exchange",
+      "refund",
+      "damaged"
+    ]
   },
   {
     "id": "returns_006",
@@ -437,7 +646,14 @@
     "expected_behavior": "State cancellation policy only if present.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "return",
+      "exchange",
+      "refund",
+      "cancel"
+    ]
   },
   {
     "id": "payment_001",
@@ -447,7 +663,9 @@
     "expected_behavior": "List payment methods from website context.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "short_summary",
+    "expected_entities": []
   },
   {
     "id": "payment_002",
@@ -457,7 +675,11 @@
     "expected_behavior": "Answer yes/no from payment context.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "delivery"
+    ]
   },
   {
     "id": "payment_003",
@@ -467,7 +689,9 @@
     "expected_behavior": "Answer yes/no from payment context.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "short_summary",
+    "expected_entities": []
   },
   {
     "id": "payment_004",
@@ -477,7 +701,9 @@
     "expected_behavior": "Use website context about payment safety/security only.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "short_summary",
+    "expected_entities": []
   },
   {
     "id": "payment_005",
@@ -487,7 +713,9 @@
     "expected_behavior": "Answer from website context; if installments are not mentioned, say not enough information.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "bullet_list",
+    "expected_entities": []
   },
   {
     "id": "account_001",
@@ -497,7 +725,9 @@
     "expected_behavior": "Answer only if account requirements are described on the website.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "short_summary",
+    "expected_entities": []
   },
   {
     "id": "account_002",
@@ -507,7 +737,9 @@
     "expected_behavior": "Explain account creation only if website context provides steps.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "short_summary",
+    "expected_entities": []
   },
   {
     "id": "account_003",
@@ -517,7 +749,9 @@
     "expected_behavior": "Use website context about order changes or customer service.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "short_summary",
+    "expected_entities": []
   },
   {
     "id": "account_004",
@@ -527,7 +761,9 @@
     "expected_behavior": "State address-change policy only if present.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "short_summary",
+    "expected_entities": []
   },
   {
     "id": "account_005",
@@ -537,7 +773,9 @@
     "expected_behavior": "Explain order confirmation only if website context provides it.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "short_summary",
+    "expected_entities": []
   },
   {
     "id": "size_001",
@@ -547,7 +785,12 @@
     "expected_behavior": "Use size-chart or sizing guidance from website context.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "product_list",
+    "expected_entities": [
+      "size",
+      "stock"
+    ]
   },
   {
     "id": "size_002",
@@ -557,7 +800,12 @@
     "expected_behavior": "Answer from website context and reference size chart availability if present.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "product_list",
+    "expected_entities": [
+      "size",
+      "stock"
+    ]
   },
   {
     "id": "size_003",
@@ -567,7 +815,12 @@
     "expected_behavior": "Explain out-of-stock guidance from website context.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "product_list",
+    "expected_entities": [
+      "size",
+      "stock"
+    ]
   },
   {
     "id": "size_004",
@@ -577,7 +830,12 @@
     "expected_behavior": "Give restock timing only if present in website context.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "product_list",
+    "expected_entities": [
+      "size",
+      "stock"
+    ]
   },
   {
     "id": "size_005",
@@ -587,7 +845,12 @@
     "expected_behavior": "Answer from website context; if reservation is not mentioned, say not enough information.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "product_list",
+    "expected_entities": [
+      "size",
+      "stock"
+    ]
   },
   {
     "id": "policy_001",
@@ -597,7 +860,9 @@
     "expected_behavior": "Use website context about SSL, secure payments, privacy, or safety only.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": []
   },
   {
     "id": "policy_002",
@@ -607,7 +872,9 @@
     "expected_behavior": "Answer from website context and cite privacy policy if present.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": []
   },
   {
     "id": "policy_003",
@@ -617,7 +884,9 @@
     "expected_behavior": "Answer from website context and cite terms if present.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": []
   },
   {
     "id": "policy_004",
@@ -627,7 +896,9 @@
     "expected_behavior": "Use website privacy/security context only; do not make unsupported guarantees.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": []
   },
   {
     "id": "policy_005",
@@ -637,7 +908,11 @@
     "expected_behavior": "State refund policy from website context or say not enough information.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "refund"
+    ]
   },
   {
     "id": "natural_001",
@@ -647,7 +922,11 @@
     "expected_behavior": "Answer naturally while using only website-supported contact details.",
     "requires_source": true,
     "hallucination_sensitive": false,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "contact_card",
+    "expected_entities": [
+      "phone"
+    ]
   },
   {
     "id": "natural_002",
@@ -657,7 +936,9 @@
     "expected_behavior": "Map informal language to Instagram and answer from website context.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "short_summary",
+    "expected_entities": []
   },
   {
     "id": "natural_003",
@@ -667,7 +948,11 @@
     "expected_behavior": "Answer from store-location context and include Lahore address if available.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "grouped_locations",
+    "expected_entities": [
+      "Lahore"
+    ]
   },
   {
     "id": "natural_004",
@@ -677,7 +962,12 @@
     "expected_behavior": "Answer from return/exchange/size policy context.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "return",
+      "exchange"
+    ]
   },
   {
     "id": "natural_005",
@@ -687,7 +977,11 @@
     "expected_behavior": "Give exact delivery timing if present.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "delivery"
+    ]
   },
   {
     "id": "natural_006",
@@ -697,7 +991,9 @@
     "expected_behavior": "Map COD to cash on delivery and answer from payment context.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "short_summary",
+    "expected_entities": []
   },
   {
     "id": "natural_007",
@@ -707,7 +1003,11 @@
     "expected_behavior": "Answer from damaged/faulty item policy context.",
     "requires_source": true,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "damaged"
+    ]
   },
   {
     "id": "hallucination_001",
@@ -717,7 +1017,11 @@
     "expected_behavior": "If the website does not provide this information, the chatbot should clearly say it does not have enough information.",
     "requires_source": false,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "insufficient_info",
+    "expected_entities": [
+      "insufficient information"
+    ]
   },
   {
     "id": "hallucination_002",
@@ -727,7 +1031,11 @@
     "expected_behavior": "If the website does not provide this information, the chatbot should clearly say it does not have enough information.",
     "requires_source": false,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "insufficient_info",
+    "expected_entities": [
+      "insufficient information"
+    ]
   },
   {
     "id": "hallucination_003",
@@ -737,7 +1045,11 @@
     "expected_behavior": "If the website does not provide this information, the chatbot should clearly say it does not have enough information.",
     "requires_source": false,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "insufficient_info",
+    "expected_entities": [
+      "insufficient information"
+    ]
   },
   {
     "id": "hallucination_004",
@@ -747,7 +1059,11 @@
     "expected_behavior": "If the website does not provide this information, the chatbot should clearly say it does not have enough information.",
     "requires_source": false,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "insufficient_info",
+    "expected_entities": [
+      "insufficient information"
+    ]
   },
   {
     "id": "hallucination_005",
@@ -757,7 +1073,11 @@
     "expected_behavior": "If the website does not provide this information, the chatbot should clearly say it does not have enough information.",
     "requires_source": false,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "insufficient_info",
+    "expected_entities": [
+      "insufficient information"
+    ]
   },
   {
     "id": "hallucination_006",
@@ -767,7 +1087,11 @@
     "expected_behavior": "If the website does not provide this information, the chatbot should clearly say it does not have enough information. It must not invent private contact details.",
     "requires_source": false,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "insufficient_info",
+    "expected_entities": [
+      "insufficient information"
+    ]
   },
   {
     "id": "cross_site_001",
@@ -777,7 +1101,11 @@
     "expected_behavior": "The chatbot should not use outside knowledge or another website's information unless the current website context is actually about PakWheels.",
     "requires_source": false,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "insufficient_info",
+    "expected_entities": [
+      "insufficient information"
+    ]
   },
   {
     "id": "cross_site_002",
@@ -787,7 +1115,11 @@
     "expected_behavior": "The chatbot should not use outside knowledge or another website's information.",
     "requires_source": false,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "insufficient_info",
+    "expected_entities": [
+      "insufficient information"
+    ]
   },
   {
     "id": "cross_site_003",
@@ -797,7 +1129,11 @@
     "expected_behavior": "The chatbot should not use outside knowledge or another website's information. It should answer only if the website context says so.",
     "requires_source": false,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "insufficient_info",
+    "expected_entities": [
+      "insufficient information"
+    ]
   },
   {
     "id": "cross_site_004",
@@ -807,6 +1143,283 @@
     "expected_behavior": "The chatbot should not use outside knowledge or another website's information.",
     "requires_source": false,
     "hallucination_sensitive": true,
-    "manual_review_required": true
+    "manual_review_required": true,
+    "answer_format": "insufficient_info",
+    "expected_entities": [
+      "insufficient information"
+    ]
+  },
+  {
+    "id": "catalog_001",
+    "category": "product_catalog",
+    "intent": "product_categories",
+    "question": "What categories of products do they sell?",
+    "expected_behavior": "List product categories only from website context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "product_list",
+    "expected_entities": [
+      "product"
+    ]
+  },
+  {
+    "id": "catalog_002",
+    "category": "product_catalog",
+    "intent": "mens_products",
+    "question": "Do they sell men’s products?",
+    "expected_behavior": "Answer from product context; do not infer if the website does not say.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "product_list",
+    "expected_entities": [
+      "product"
+    ]
+  },
+  {
+    "id": "catalog_003",
+    "category": "product_catalog",
+    "intent": "womens_products",
+    "question": "Do they sell women’s products?",
+    "expected_behavior": "Answer from product context; do not infer if the website does not say.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "product_list",
+    "expected_entities": [
+      "product"
+    ]
+  },
+  {
+    "id": "price_001",
+    "category": "product_price",
+    "intent": "single_product_price",
+    "question": "What is the price of one product?",
+    "expected_behavior": "Give a product name and price only if present in context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "product_list",
+    "expected_entities": [
+      "product",
+      "price"
+    ]
+  },
+  {
+    "id": "price_002",
+    "category": "product_price",
+    "intent": "product_name_with_price",
+    "question": "Tell me a product name with its price.",
+    "expected_behavior": "Give a product name with its exact price if available.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "product_list",
+    "expected_entities": [
+      "product",
+      "price"
+    ]
+  },
+  {
+    "id": "price_003",
+    "category": "product_price",
+    "intent": "discounted_products",
+    "question": "Do they mention any discounted products?",
+    "expected_behavior": "Mention discounts only if present in website context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "product_list",
+    "expected_entities": [
+      "product",
+      "price"
+    ]
+  },
+  {
+    "id": "size_color_stock_001",
+    "category": "product_size_color_stock",
+    "intent": "product_sizes",
+    "question": "Do they provide sizes?",
+    "expected_behavior": "List sizes or size guidance only if present in product context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "product_list",
+    "expected_entities": [
+      "product",
+      "size",
+      "color",
+      "stock"
+    ]
+  },
+  {
+    "id": "size_color_stock_002",
+    "category": "product_size_color_stock",
+    "intent": "product_colors",
+    "question": "What colors are available for products?",
+    "expected_behavior": "List colors only if present in product context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "product_list",
+    "expected_entities": [
+      "product",
+      "size",
+      "color",
+      "stock"
+    ]
+  },
+  {
+    "id": "size_color_stock_003",
+    "category": "product_size_color_stock",
+    "intent": "restock_timing",
+    "question": "When are items restocked?",
+    "expected_behavior": "Give restock timing only if present in website context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "product_list",
+    "expected_entities": [
+      "product",
+      "size",
+      "color",
+      "stock"
+    ]
+  },
+  {
+    "id": "tracking_001",
+    "category": "tracking_orders",
+    "intent": "track_order",
+    "question": "How can I track my order?",
+    "expected_behavior": "Explain order tracking only if the website provides tracking information.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "tracking"
+    ]
+  },
+  {
+    "id": "tracking_002",
+    "category": "tracking_orders",
+    "intent": "order_confirmation_missing",
+    "question": "What if I do not receive order confirmation?",
+    "expected_behavior": "Use website context about order confirmation or customer support.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "tracking"
+    ]
+  },
+  {
+    "id": "damaged_001",
+    "category": "damaged_wrong_item",
+    "intent": "wrong_item",
+    "question": "What should I do if I receive the wrong item?",
+    "expected_behavior": "Use website context about wrong, damaged, or defective items.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "damaged"
+    ]
+  },
+  {
+    "id": "damaged_002",
+    "category": "damaged_wrong_item",
+    "intent": "order_problem_contact",
+    "question": "Who should I contact for order problems?",
+    "expected_behavior": "Use website-supported customer service details for order problems.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "contact_card",
+    "expected_entities": [
+      "phone"
+    ]
+  },
+  {
+    "id": "discounts_001",
+    "category": "discounts_coupons",
+    "intent": "discount_code",
+    "question": "How can I use a discount code?",
+    "expected_behavior": "Explain discount code usage only if present in context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "short_summary",
+    "expected_entities": []
+  },
+  {
+    "id": "discounts_002",
+    "category": "discounts_coupons",
+    "intent": "paid_order_cancelled",
+    "question": "What happens if my paid order is cancelled?",
+    "expected_behavior": "Explain cancellation/refund/store credit only if present in context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": [
+      "cancel"
+    ]
+  },
+  {
+    "id": "privacy_001",
+    "category": "privacy_security",
+    "intent": "website_secure",
+    "question": "Is the website secure?",
+    "expected_behavior": "Use website context about SSL, secure payments, privacy, or safety only.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "short_summary",
+    "expected_entities": []
+  },
+  {
+    "id": "legal_001",
+    "category": "legal_policy",
+    "intent": "terms_and_conditions",
+    "question": "Where can I find their terms and conditions?",
+    "expected_behavior": "Point to terms only if the website context provides it.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "policy_steps",
+    "expected_entities": []
+  },
+  {
+    "id": "natural_008",
+    "category": "natural_customer_language",
+    "intent": "whatsapp",
+    "question": "what is their whatsapp?",
+    "expected_behavior": "Map informal language to WhatsApp and answer from website contact context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "contact_card",
+    "expected_entities": [
+      "phone",
+      "WhatsApp"
+    ]
+  },
+  {
+    "id": "cross_site_005",
+    "category": "cross_site_confusion",
+    "intent": "amazon_delivery",
+    "question": "Does Amazon deliver their products?",
+    "expected_behavior": "The chatbot should not use outside knowledge or another website’s information.",
+    "requires_source": false,
+    "hallucination_sensitive": true,
+    "manual_review_required": true,
+    "answer_format": "insufficient_info",
+    "expected_entities": [
+      "insufficient information"
+    ]
   }
 ]

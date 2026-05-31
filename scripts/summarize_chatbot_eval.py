@@ -11,10 +11,16 @@ from typing import Any
 FLAG_NAMES = [
     "missing_sources",
     "missing_url",
+    "missing_markdown_link",
     "missing_phone",
+    "missing_email",
+    "missing_hours",
+    "missing_bullets",
+    "missing_city_grouping",
     "possible_hallucination",
     "non_rag_mode",
-    "short_answer",
+    "very_short_answer",
+    "raw_unformatted_long_answer",
 ]
 
 
@@ -50,7 +56,12 @@ def summarize_results(path: str | Path) -> dict[str, Any]:
         "answer_count": sum(1 for row in rows if str(row.get("answer") or "").strip()),
         "error_count": sum(1 for row in rows if str(row.get("error") or "").strip()),
         "average_latency_ms": round(mean(latencies), 2) if latencies else 0,
+        "questions_by_category": dict(sorted(Counter(str(row.get("category") or "uncategorized") for row in rows).items())),
         "flags": {flag: _count_flag(rows, flag) for flag in FLAG_NAMES},
+        "answers_with_urls": sum(1 for row in rows if _truthy(row.get("has_raw_url")) or str(row.get("detected_url") or "").strip()),
+        "answers_with_markdown_links": sum(1 for row in rows if _truthy(row.get("has_clickable_markdown_link"))),
+        "answers_missing_sources": _count_flag(rows, "missing_sources"),
+        "possible_hallucinations": _count_flag(rows, "possible_hallucination"),
         "by_category": {},
         "manual_scores": {
             "average": round(mean(manual_scores), 2) if manual_scores else None,
@@ -66,6 +77,8 @@ def summarize_results(path: str | Path) -> dict[str, Any]:
             "answers": sum(1 for row in category_rows if str(row.get("answer") or "").strip()),
             "errors": sum(1 for row in category_rows if str(row.get("error") or "").strip()),
             "flags": {flag: _count_flag(category_rows, flag) for flag in FLAG_NAMES},
+            "answers_with_urls": sum(1 for row in category_rows if _truthy(row.get("has_raw_url")) or str(row.get("detected_url") or "").strip()),
+            "answers_with_markdown_links": sum(1 for row in category_rows if _truthy(row.get("has_clickable_markdown_link"))),
             "average_manual_score": round(mean(category_scores), 2) if category_scores else None,
         }
     return summary
@@ -101,6 +114,12 @@ def _parse_manual_score(value: Any) -> float | str | None:
         return float(text)
     except ValueError:
         return None
+
+
+def _truthy(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value or "").strip().lower() in {"true", "1", "yes"}
 
 
 def parse_args() -> argparse.Namespace:

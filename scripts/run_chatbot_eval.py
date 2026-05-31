@@ -15,7 +15,11 @@ DEFAULT_BASE_URL = "http://127.0.0.1:8000"
 DEFAULT_OUTPUT_PREFIX = "evaluation/results/chatbot_eval"
 
 URL_RE = re.compile(r"https?://[^\s<>)\"']+", re.IGNORECASE)
+MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\(https?://[^)\s]+\)", re.IGNORECASE)
 PHONE_RE = re.compile(r"(\+?\d[\d\s().-]{7,}\d)")
+EMAIL_RE = re.compile(r"\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b", re.IGNORECASE)
+TIME_RE = re.compile(r"\b(\d{1,2}(:\d{2})?\s?(am|pm|a\.m\.|p\.m\.)|\d{1,2}\s?-\s?\d{1,2})\b", re.IGNORECASE)
+CITY_NAMES = ["Lahore", "Karachi", "Islamabad", "Rawalpindi", "Faisalabad", "Multan", "Peshawar", "Quetta"]
 NOT_ENOUGH_RE = re.compile(
     r"(not enough information|does not provide enough information|do not have enough information|"
     r"doesn't provide enough information|not provided|not available|cannot determine)",
@@ -25,12 +29,27 @@ NOT_ENOUGH_RE = re.compile(
 CSV_FIELDS = [
     "question_id",
     "category",
+    "intent",
     "question",
+    "expected_behavior",
+    "answer_format",
+    "expected_entities",
     "answer",
     "mode",
     "source_count",
+    "source_titles",
+    "source_urls",
+    "source_types",
     "warnings",
     "flags",
+    "has_clickable_markdown_link",
+    "has_raw_url",
+    "has_bullets",
+    "has_numbered_list",
+    "detected_phone",
+    "detected_email",
+    "detected_url",
+    "detected_cities",
     "latency_ms",
     "manual_score",
     "manual_notes",
@@ -158,6 +177,8 @@ def build_result_record(
         "intent": question_record.get("intent", ""),
         "question": question_record.get("question", ""),
         "expected_behavior": question_record.get("expected_behavior", ""),
+        "answer_format": question_record.get("answer_format", ""),
+        "expected_entities": question_record.get("expected_entities", []),
         "answer": answer,
         "mode": response.get("mode", ""),
         "sources": sources,
@@ -200,11 +221,20 @@ def compute_heuristics(
     category = str(question_record.get("category") or "")
     question = str(question_record.get("question") or "")
     question_lower = question.lower()
+    answer_format = str(question_record.get("answer_format") or "")
     answer_text = answer or ""
     mode = str(response.get("mode") or "")
 
-    has_url = bool(URL_RE.search(answer_text))
-    has_phone_like_pattern = bool(PHONE_RE.search(answer_text))
+    detected_urls = URL_RE.findall(answer_text)
+    detected_phones = [match.group(0).strip() for match in PHONE_RE.finditer(answer_text)]
+    detected_emails = EMAIL_RE.findall(answer_text)
+    detected_cities = [city for city in CITY_NAMES if re.search(rf"\b{re.escape(city)}\b", answer_text, re.IGNORECASE)]
+    has_url = bool(detected_urls)
+    has_clickable_markdown_link = bool(MARKDOWN_LINK_RE.search(answer_text))
+    has_phone_like_pattern = bool(detected_phones)
+    has_bullets = bool(re.search(r"(?m)^\s*[-*]\s+\S+", answer_text))
+    has_numbered_list = bool(re.search(r"(?m)^\s*\d+\.\s+\S+", answer_text))
+    has_time_like_pattern = bool(TIME_RE.search(answer_text))
     says_not_enough_info = bool(NOT_ENOUGH_RE.search(answer_text))
     answer_length = len(answer_text.split())
     flags = []
@@ -212,13 +242,32 @@ def compute_heuristics(
     if question_record.get("requires_source") and source_count == 0:
         flags.append("missing_sources")
     if answer_length < 5:
-        flags.append("short_answer")
+        flags.append("very_short_answer")
     if question_record.get("hallucination_sensitive") and not says_not_enough_info and source_count == 0:
         flags.append("possible_hallucination")
-    if category == "social_links" and "link" in question_lower and not has_url:
+    if (category == "social_links" or answer_format == "clickable_link") and "link" in question_lower and not has_url:
         flags.append("missing_url")
-    if category == "contact_support" and "contact number" in question_lower and not has_phone_like_pattern:
+    if answer_format == "clickable_link" and not has_clickable_markdown_link:
+        flags.append("missing_markdown_link")
+    if answer_format == "grouped_locations":
+        if not has_bullets and not has_numbered_list:
+            flags.append("missing_bullets")
+        if len(detected_cities) < 1:
+            flags.append("missing_city_grouping")
+    if answer_format == "contact_card" and any(term in question_lower for term in ["number", "contact number", "whatsapp"]):
+        if not has_phone_like_pattern:
+            flags.append("missing_phone")
+    elif category == "contact_support" and "contact number" in question_lower and not has_phone_like_pattern:
         flags.append("missing_phone")
+    if answer_format == "contact_card" and "email" in question_lower and not detected_emails:
+        flags.append("missing_email")
+    if answer_format == "contact_card" and any(term in question_lower for term in ["hours", "timing", "time"]) and not has_time_like_pattern:
+        flags.append("missing_hours")
+    if answer_format == "insufficient_info" and not says_not_enough_info and source_count == 0:
+        if "possible_hallucination" not in flags:
+            flags.append("possible_hallucination")
+    if answer_length > 80 and not has_bullets and not has_numbered_list and answer_format not in {"short_summary", "insufficient_info"}:
+        flags.append("raw_unformatted_long_answer")
     if mode != "rag":
         flags.append("non_rag_mode")
 
@@ -228,7 +277,15 @@ def compute_heuristics(
         "says_not_enough_info": says_not_enough_info,
         "answer_length": answer_length,
         "has_url": has_url,
+        "has_clickable_markdown_link": has_clickable_markdown_link,
+        "has_raw_url": has_url,
+        "has_bullets": has_bullets,
+        "has_numbered_list": has_numbered_list,
         "has_phone_like_pattern": has_phone_like_pattern,
+        "detected_phone": "; ".join(detected_phones),
+        "detected_email": "; ".join(detected_emails),
+        "detected_url": "; ".join(detected_urls),
+        "detected_cities": "; ".join(detected_cities),
         "possible_hallucination_flag": "possible_hallucination" in flags,
         "flags": flags,
     }
@@ -264,12 +321,27 @@ def write_csv(results: list[dict[str, Any]], path: str | Path) -> None:
                 {
                     "question_id": result.get("question_id", ""),
                     "category": result.get("category", ""),
+                    "intent": result.get("intent", ""),
                     "question": result.get("question", ""),
+                    "expected_behavior": result.get("expected_behavior", ""),
+                    "answer_format": result.get("answer_format", ""),
+                    "expected_entities": "; ".join(result.get("expected_entities") or []),
                     "answer": result.get("answer", ""),
                     "mode": result.get("mode", ""),
                     "source_count": result.get("source_count", 0),
+                    "source_titles": "; ".join(_source_values(result.get("sources") or [], "page_title")),
+                    "source_urls": "; ".join(_source_values(result.get("sources") or [], "source_url")),
+                    "source_types": "; ".join(_source_values(result.get("sources") or [], "chunk_type")),
                     "warnings": "; ".join(result.get("warnings") or []),
                     "flags": "; ".join(result.get("flags") or []),
+                    "has_clickable_markdown_link": result.get("has_clickable_markdown_link", False),
+                    "has_raw_url": result.get("has_raw_url", False),
+                    "has_bullets": result.get("has_bullets", False),
+                    "has_numbered_list": result.get("has_numbered_list", False),
+                    "detected_phone": result.get("detected_phone", ""),
+                    "detected_email": result.get("detected_email", ""),
+                    "detected_url": result.get("detected_url", ""),
+                    "detected_cities": result.get("detected_cities", ""),
                     "latency_ms": result.get("latency_ms", 0),
                     "manual_score": result.get("manual_score", ""),
                     "manual_notes": result.get("manual_notes", ""),
@@ -294,11 +366,13 @@ def write_markdown_report(results: list[dict[str, Any]], path: str | Path) -> No
         lines.extend([f"## {category}", ""])
         for result in category_results:
             flags = ", ".join(result.get("flags") or []) or "none"
+            sources = _format_markdown_sources(result.get("sources") or [])
             lines.extend(
                 [
                     f"### {result.get('question_id', '')}: {result.get('question', '')}",
                     "",
                     f"- Mode: {result.get('mode', '')}",
+                    f"- Expected format: {result.get('answer_format', '') or 'not specified'}",
                     f"- Sources: {result.get('source_count', 0)}",
                     f"- Flags: {flags}",
                     f"- Latency: {result.get('latency_ms', 0)} ms",
@@ -307,15 +381,46 @@ def write_markdown_report(results: list[dict[str, Any]], path: str | Path) -> No
                     "",
                     str(result.get("answer") or result.get("error") or "").strip(),
                     "",
+                    "**Sources**",
+                    "",
+                    *(sources or ["- None"]),
+                    "",
                     "**Manual review**",
                     "",
                     "- Score:",
-                    "- Notes:",
                     "- Issue type:",
+                    "- Notes:",
                     "",
                 ]
             )
     Path(path).write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+
+
+def _source_values(sources: list[dict[str, Any]], field: str) -> list[str]:
+    values = []
+    for source in sources:
+        if isinstance(source, dict) and source.get(field):
+            values.append(str(source.get(field)))
+    return values
+
+
+def _format_markdown_sources(sources: list[dict[str, Any]]) -> list[str]:
+    lines = []
+    for index, source in enumerate(sources, start=1):
+        if not isinstance(source, dict):
+            continue
+        source_url = str(source.get("source_url") or "").strip()
+        page_title = str(source.get("page_title") or source_url or "Source").strip()
+        chunk_type = str(source.get("chunk_type") or "chunk").strip()
+        if source_url:
+            lines.append(f"{index}. [{_escape_markdown_link_text(page_title)}]({source_url}) - {chunk_type}")
+        else:
+            lines.append(f"{index}. {page_title} - {chunk_type}")
+    return lines
+
+
+def _escape_markdown_link_text(text: str) -> str:
+    return text.replace("[", "\\[").replace("]", "\\]")
 
 
 def parse_args() -> argparse.Namespace:

@@ -4,8 +4,8 @@ Use this template after running `scripts/run_chatbot_eval.py`.
 
 ## Scoring
 
-- `2` = Correct answer with a useful source.
-- `1` = Partially correct, missing some detail, or weak source.
+- `2` = Correct, complete, well-formatted, useful source.
+- `1` = Partially correct or formatting/source issue.
 - `0` = Wrong, hallucinated, or says not enough information when the website clearly has the data.
 - `N/A` = Website likely does not contain this information.
 
@@ -23,6 +23,7 @@ Add or fill these fields in the generated CSV:
 - `chunker_missing_chunk`
 - `retrieval_wrong_chunk`
 - `prompt_refusal`
+- `answer_format_issue`
 - `source_format_issue`
 - `hallucination`
 - `frontend_display_issue`
