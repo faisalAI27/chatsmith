@@ -1,0 +1,102 @@
+[
+  {
+    "id": "smoke_001",
+    "category": "business_overview",
+    "intent": "business_summary",
+    "question": "What is this website about?",
+    "expected_behavior": "Answer from website context and summarize the business clearly.",
+    "requires_source": true,
+    "hallucination_sensitive": false,
+    "manual_review_required": true
+  },
+  {
+    "id": "smoke_002",
+    "category": "contact_support",
+    "intent": "contact_options",
+    "question": "How can I contact them?",
+    "expected_behavior": "Provide website-supported contact methods such as phone, email, WhatsApp, or contact page.",
+    "requires_source": true,
+    "hallucination_sensitive": false,
+    "manual_review_required": true
+  },
+  {
+    "id": "smoke_003",
+    "category": "contact_support",
+    "intent": "phone_number",
+    "question": "What is their contact number?",
+    "expected_behavior": "Return the exact contact number if present. If not present, say the website does not provide enough information.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "smoke_004",
+    "category": "store_locations",
+    "intent": "all_locations",
+    "question": "Where are their stores located?",
+    "expected_behavior": "List store locations from website context or say the website does not provide enough information.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "smoke_005",
+    "category": "social_links",
+    "intent": "instagram_link",
+    "question": "Give me their Instagram link.",
+    "expected_behavior": "Return the exact Instagram URL if present. Do not invent a profile URL.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "smoke_006",
+    "category": "delivery_shipping",
+    "intent": "delivery_time",
+    "question": "How long does delivery take?",
+    "expected_behavior": "Give exact delivery time if present; otherwise say not enough information.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "smoke_007",
+    "category": "return_refund_exchange",
+    "intent": "return_policy",
+    "question": "What is their return policy?",
+    "expected_behavior": "State return policy from website context or say not enough information.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "smoke_008",
+    "category": "payment",
+    "intent": "payment_methods",
+    "question": "What payment methods are available?",
+    "expected_behavior": "List payment methods from website context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "smoke_009",
+    "category": "return_refund_exchange",
+    "intent": "damaged_product",
+    "question": "What if my order is damaged?",
+    "expected_behavior": "Explain damaged/faulty item instructions from website context.",
+    "requires_source": true,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  },
+  {
+    "id": "smoke_010",
+    "category": "hallucination_resistance",
+    "intent": "unknown_ceo",
+    "question": "Who is the CEO of this company?",
+    "expected_behavior": "If the website does not provide this information, the chatbot should clearly say it does not have enough information.",
+    "requires_source": false,
+    "hallucination_sensitive": true,
+    "manual_review_required": true
+  }
+]
