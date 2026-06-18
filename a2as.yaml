@@ -1,0 +1,438 @@
+manifest:
+  version: "0.1.2"
+  schema: https://a2as.org/cert/schema
+  subject:
+    name: faisalai27/chatsmith
+    source: https://github.com/faisalai27/chatsmith
+    branch: main
+    commit: "d0724a16"
+    scope: [backend/app/api/chat.py, backend/app/services/metrics_logger.py, backend/app/services/scrape_pipeline.py]
+  issued:
+    by: A2AS.org
+    at: '2026-01-26T16:11:39Z'
+  signatures:
+    digest: sha256:ntoVmXxoeHuZE1TCk-P7m0oke_7uQGCVcmW8W-dY9Vc
+    key: ed25519:0krIn1eNfwlcG06v3SN0mesoCeYejxPOMUziPoY3v04
+    sig: ed25519:f1xDa2gxOF6vjrogXawmT-p35p-EWVYYcApZBc77bq7OiaOHC-TUrmbVsptazYSiItesjXM2Xh0iEt_5zgXSDg
+
+agents:
+  gap_detection_agent:
+    type: instance
+    models: [gpt-4o-mini]
+    params:
+      name: GapDetectionAgent
+      output_type: GapAnalysis
+      instructions: [You are a content analysis expert. You analyze extracted website content and determine if web searches
+          are needed to fill gaps., 'Analyze the provided website content and determine:', '1. Is the content comprehensive
+          enough for a chatbot to answer questions about this website?', '2. What specific information gaps exist (if any)?',
+        '3. Should we run web searches to fill these gaps?', 'Be conservative - only recommend web searches if there are CLEAR
+          gaps like:', '- No contact information found', '- Pricing/plans mentioned but not detailed', '- Services listed
+          but not explained', '- Team/leadership mentioned but not detailed', '- Key product features missing', 'If the website
+          content covers the basics (what they do, who they are, how to contact), NO web search is needed.']
+  name_extractor:
+    type: instance
+    models: [gpt-4o-mini]
+    params:
+      name: NameExtractor
+      output_type: NameExtraction
+      instructions: ['You analyze the provided text and extract a single concise name that best represents the main subject
+          (e.g., site/company/person/product). If a URL is provided, prefer the name associated with that URL. Return only
+          the name, no extra words.']
+  planner_agent:
+    type: instance
+    models: [gpt-4o-mini]
+    params:
+      name: PlannerAgent
+      output_type: WebSearchPlan
+      instructions: [PLANNER_INSTRUCTIONS]
+  search_agent:
+    type: instance
+    models: [gpt-4o-mini]
+    tools: [WebSearchTool]
+    params:
+      name: Search agent
+      model_settings: ModelSettings(tool_choice=required)
+      instructions: ['You are a research assistant. Given a search URL, you search the web for that URL and produce a concise
+          summary of the results. The summary must 2-3 paragraphs and less than 300 words. Capture the main points. Write
+          succintly, no need to have complete sentences or good grammar. This will be consumed by someone synthesizing a report,
+          so it''s vital you capture the essence and ignore any fluff. Do not include any additional commentary other than
+          the summary itself.']
+  writer_agent:
+    type: instance
+    models: [gpt-4o-mini]
+    params:
+      name: WriterAgent
+      output_type: ReportData
+      instructions: ['You are a senior researcher tasked with writing a cohesive report for a research query About website
+          URL. You will be provided with the original URL, and some initial research done by a research assistant.', 'You
+          should first come up with an outline for the Detail report that describes the structure and flow of the report.
+          Then, generate the report and return that as your final output.', 'The final output should be in markdown format,
+          and it should be lengthy and detailed. Aim for 5-10 pages of content, at least 1000 words.']
+
+models:
+  gpt-4o-mini:
+    type: literal
+    agents: [search_agent, planner_agent, gap_detection_agent, writer_agent, name_extractor]
+
+tools:
+  WebSearchTool:
+    type: module
+    agents: [search_agent]
+    params:
+      search_context_size: low
+
+imports:
+  Agent: agents.Agent
+  aiohttp: aiohttp
+  Any: typing.Any
+  APIRouter: fastapi.APIRouter
+  asyncio: asyncio
+  BaseModel: pydantic.BaseModel
+  BeautifulSoup: bs4.BeautifulSoup
+  certifi: certifi
+  chat: chat
+  ChatMessage: models.chat.ChatMessage
+  ChatRequest: models.chat.ChatRequest
+  ChatResponse: models.chat.ChatResponse
+  Client: supabase.Client
+  create_client: supabase.create_client
+  datetime: datetime.datetime
+  Dict: typing.Dict
+  ENABLE_METRICS: services.scrape_pipeline.ENABLE_METRICS
+  Field: pydantic.Field
+  gr: gradio
+  hashlib: hashlib
+  health: health
+  HTTPException: fastapi.HTTPException
+  JobCreate: models.jobs.JobCreate
+  jobs: jobs
+  JobStatus: models.jobs.JobStatus
+  json: json
+  List: typing.List
+  load_dotenv: dotenv.load_dotenv
+  log_chat_answer: services.metrics_logger.log_chat_answer
+  metrics_enabled: services.metrics_logger.metrics_enabled
+  ModelSettings: agents.model_settings.ModelSettings
+  OpenAI: openai.OpenAI
+  Optional: typing.Optional
+  os: os
+  Path: pathlib.Path
+  re: re
+  Runner: agents.Runner
+  save_chat_answer_to_supabase: services.metrics_logger.save_chat_answer_to_supabase
+  save_job_metrics_to_supabase: services.metrics_logger.save_job_metrics_to_supabase
+  scrape_pipeline: services.scrape_pipeline
+  ssl: ssl
+  time: time
+  timezone: datetime.timezone
+  Tuple: typing.Tuple
+  urljoin: urllib.parse.urljoin
+  urlparse: urllib.parse.urlparse
+  WebSearchTool: agents.WebSearchTool
+
+functions:
+  _auth_failure:
+    type: sync
+    module: backend.app.services.scrape_pipeline
+    args: [message]
+  _auth_success:
+    type: sync
+    module: backend.app.services.scrape_pipeline
+    args: [email, session]
+  _metrics_enabled:
+    type: sync
+    module: backend.app.services.metrics_logger
+    params:
+      returns: bool
+  _otp_pending:
+    type: sync
+    module: backend.app.services.scrape_pipeline
+    args: [message]
+  _view_updates:
+    type: sync
+    module: backend.app.services.scrape_pipeline
+    args: [target]
+  analyze_content_gaps:
+    type: async
+    module: backend.app.services.scrape_pipeline
+    args: [scraped_content, url]
+    params:
+      returns: GapAnalysis
+  build_error_status:
+    type: sync
+    module: backend.app.services.scrape_pipeline
+    args: [error_type, details]
+    params:
+      returns: str
+  build_status_new:
+    type: sync
+    module: backend.app.services.scrape_pipeline
+    args: [percent, current_step, selected_name, finished, stats, from_cache, errors]
+    params:
+      returns: str
+  chat:
+    type: async
+    module: backend.app.api.chat
+    args: [req]
+  chat_fn:
+    type: sync
+    module: backend.app.services.scrape_pipeline
+    args: [message, history, system_prompt, name, user]
+  check_robots_txt:
+    type: async
+    module: backend.app.services.scrape_pipeline
+    args: [session, base_url]
+    params:
+      returns: set
+  clean_html_content:
+    type: sync
+    module: backend.app.services.scrape_pipeline
+    args: [html]
+    params:
+      returns: Dict
+  create_knowledge_json:
+    type: sync
+    module: backend.app.services.scrape_pipeline
+    args: [url, scraped_data, web_search_results, name]
+    params:
+      returns: Dict
+  discover_key_pages:
+    type: sync
+    module: backend.app.services.scrape_pipeline
+    args: [html, base_url]
+    params:
+      returns: List[str]
+  extract_name_from_text:
+    type: async
+    module: backend.app.services.scrape_pipeline
+    args: [text, url]
+    params:
+      returns: str
+  fetch_page:
+    type: async
+    module: backend.app.services.scrape_pipeline
+    args: [session, url]
+    params:
+      returns: Tuple
+  fetch_page_with_retry:
+    type: async
+    module: backend.app.services.scrape_pipeline
+    args: [session, url, retries]
+    params:
+      returns: Tuple
+  format_scraped_content_for_context:
+    type: sync
+    module: backend.app.services.scrape_pipeline
+    args: [scraped_data]
+    params:
+      returns: str
+  get_cache_path:
+    type: sync
+    module: backend.app.services.scrape_pipeline
+    args: [url]
+    params:
+      returns: str
+  get_cached_knowledge:
+    type: sync
+    module: backend.app.services.scrape_pipeline
+    args: [url]
+  get_supabase_client:
+    type: sync
+    module: backend.app.services.scrape_pipeline
+  handle_confirm_reset:
+    type: sync
+    module: backend.app.services.scrape_pipeline
+    args: [email, otp, new_password]
+  handle_login:
+    type: sync
+    module: backend.app.services.scrape_pipeline
+    args: [email, password]
+  handle_logout:
+    type: sync
+    module: backend.app.services.scrape_pipeline
+    args: [current_user]
+  handle_run_research:
+    type: async
+    module: backend.app.services.scrape_pipeline
+    args: [url, force_refresh, user, progress]
+  handle_send_reset:
+    type: sync
+    module: backend.app.services.scrape_pipeline
+    args: [email]
+  handle_signup:
+    type: sync
+    module: backend.app.services.scrape_pipeline
+    args: [email, password, first_name, last_name]
+  handle_verify_signup_otp:
+    type: sync
+    module: backend.app.services.scrape_pipeline
+    args: [email, password, otp]
+  is_cached:
+    type: sync
+    module: backend.app.services.scrape_pipeline
+    args: [url]
+    params:
+      returns: bool
+  is_path_allowed:
+    type: sync
+    module: backend.app.services.scrape_pipeline
+    args: [url, disallowed_paths]
+    params:
+      returns: bool
+  knowledge_to_chatbot_context:
+    type: sync
+    module: backend.app.services.scrape_pipeline
+    args: [knowledge]
+    params:
+      returns: str
+  load_knowledge_json:
+    type: sync
+    module: backend.app.services.scrape_pipeline
+    args: [filepath]
+    params:
+      returns: Dict
+  log_chat_answer:
+    type: sync
+    module: backend.app.services.metrics_logger
+    args: [question, answer, provenance, user, log_path]
+    params:
+      returns: None
+  metrics_enabled:
+    type: sync
+    module: backend.app.services.metrics_logger
+    params:
+      returns: bool
+  perform_login:
+    type: sync
+    module: backend.app.services.scrape_pipeline
+    args: [email, password]
+  perform_searches:
+    type: async
+    module: backend.app.services.scrape_pipeline
+    args: [search_plan]
+  plan_gap_searches:
+    type: async
+    module: backend.app.services.scrape_pipeline
+    args: [url, scraped_content]
+  run_full_research_new:
+    type: async
+    module: backend.app.services.scrape_pipeline
+    args: [url, force_refresh, progress]
+  run_job:
+    type: async
+    module: backend.app.api.jobs
+    args: [body]
+    params:
+      returns: JobStatus
+  save_chat_answer_to_supabase:
+    type: sync
+    module: backend.app.services.metrics_logger
+    args: [question, answer, system_prompt, user_id, url]
+    params:
+      returns: None
+  save_job_metrics_to_supabase:
+    type: sync
+    module: backend.app.services.metrics_logger
+    args: [url, stats, user_id]
+    params:
+      returns: None
+  save_knowledge_json:
+    type: sync
+    module: backend.app.services.scrape_pipeline
+    args: [knowledge, url]
+    params:
+      returns: str
+  scrape_website:
+    type: async
+    module: backend.app.services.scrape_pipeline
+    args: [url]
+    params:
+      returns: Dict
+  search:
+    type: async
+    module: backend.app.services.scrape_pipeline
+    args: [item]
+
+variables:
+  ENABLE_METRICS_LOGGING:
+    type: env
+    params:
+      caller: [os.getenv]
+      path: [backend.app.services.metrics_logger, backend.app.services.scrape_pipeline]
+  METRICS_LOG_PATH:
+    type: env
+    params:
+      caller: [os.getenv]
+      path: [backend.app.services.metrics_logger]
+  SUPABASE_ANON_KEY:
+    type: env
+    params:
+      caller: [os.getenv]
+      path: [backend.app.services.metrics_logger, backend.app.services.scrape_pipeline]
+  supabase_anon_key:
+    type: env
+    params:
+      caller: [os.getenv]
+      path: [backend.app.services.metrics_logger]
+  SUPABASE_SERVICE_ROLE_KEY:
+    type: env
+    params:
+      caller: [os.getenv]
+      path: [backend.app.services.metrics_logger]
+  supabase_service_role_key:
+    type: env
+    params:
+      caller: [os.getenv]
+      path: [backend.app.services.metrics_logger]
+  SUPABASE_URL:
+    type: env
+    params:
+      caller: [os.getenv]
+      path: [backend.app.services.metrics_logger, backend.app.services.scrape_pipeline]
+  supabase_url:
+    type: env
+    params:
+      caller: [os.getenv]
+      path: [backend.app.services.metrics_logger]
+
+files:
+  cache_path:
+    type: literal
+    actions: [read]
+    params:
+      caller: [Path(get_cache_path(url)), open, json.load]
+  filepath:
+    type: literal
+    actions: [read, write]
+    params:
+      caller: [Path(get_cache_path(url)), filepath.parent.mkdir, open, json.load]
+  KNOWLEDGE_DIR:
+    type: variable
+    actions: [write]
+    params:
+      caller: [KNOWLEDGE_DIR.mkdir]
+  LOG_PATH:
+    type: literal
+    actions: [read]
+    params:
+      caller: [Path(METRICS_LOG_PATH)]
+  log_path:
+    type: literal
+    actions: [read, write]
+    params:
+      caller: [Path(log_path), Path, log_path.parent.mkdir]
+  METRICS_LOG_PATH:
+    type: variable
+    actions: [read]
+    params:
+      caller: [Path]
+
+networks:
+  example.com:
+    type: api
+    actions: [GET]
+    urls: [/]
+    protocols: [https]
+    ports: ["443"]
+    params:
+      links: [placeholder]
