@@ -1,31 +1,84 @@
+"""Structured extraction of a single HTML page into the scraper v2 page schema.
+
+The extractor works on any HTML (static or Playwright-rendered). Text is read
+as an ordered list of *blocks* (paragraphs, list items, table rows, headings,
+and text that sits directly inside div/span containers), so it works for
+classic article markup and for component-based layouts (React, Vue,
+Tailwind cards, page builders) where headings and text are not siblings.
+"""
+
 import json
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, Iterable, List
 from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
+from bs4.element import CData, Comment, Declaration, Doctype, NavigableString, ProcessingInstruction, Tag
 
 from .scraper_schema import create_page_record, create_quality_record
+from .text_fingerprint import content_hash, simhash_hex
 
 
-NOISE_PATTERNS = (
-    "ad-",
+# Class/id *tokens* (whole words after splitting on - _ and camelCase) that mark
+# overlays and ads. Matching whole tokens avoids the old substring bug where
+# "read-more" matched "ad-" and "downloads" matched "ads".
+NOISE_TOKENS = {
+    "ad",
     "ads",
+    "adsense",
+    "adslot",
+    "advert",
+    "adverts",
     "advertisement",
-    "banner",
+    "advertising",
+    "consent",
     "cookie",
+    "cookies",
+    "gdpr",
     "modal",
     "newsletter",
-    "overlay",
     "popup",
-    "promo",
+    "sponsored",
     "subscribe",
-)
+}
+# Kept for backward compatibility with code that imported the old constant.
+NOISE_PATTERNS = tuple(sorted(NOISE_TOKENS))
+NAV_TOKENS = {
+    "breadcrumb",
+    "breadcrumbs",
+    "megamenu",
+    "menu",
+    "nav",
+    "navbar",
+    "navigation",
+    "submenu",
+}
+NOISE_ROLES = {"dialog", "alertdialog"}
+NAV_ROLES = {"navigation", "menubar", "menu"}
+PROTECTED_TAGS = {"html", "body", "main", "article"}
+ALWAYS_REMOVE_TAGS = ["script", "style", "noscript", "iframe", "svg", "template", "canvas", "object", "embed"]
+CHROME_TAGS = {"header", "footer", "aside", "nav"}
+
+BLOCK_TAGS = {
+    "address", "article", "aside", "blockquote", "body", "caption", "dd", "details",
+    "dialog", "div", "dl", "dt", "fieldset", "figcaption", "figure", "footer", "form",
+    "h1", "h2", "h3", "h4", "h5", "h6", "header", "hgroup", "html", "legend", "li",
+    "main", "nav", "ol", "p", "pre", "section", "summary", "table", "tbody", "tfoot",
+    "thead", "tr", "ul",
+}
+HEADING_TAGS = {"h1", "h2", "h3", "h4", "h5", "h6"}
+SECTION_HEADING_MAX_LEVEL = 4
 
 SKIP_LINK_SCHEMES = ("javascript:", "mailto:", "tel:")
 SKIP_IMAGE_SCHEMES = ("data:", "blob:", "javascript:", "mailto:", "tel:")
-MAX_CLEAN_TEXT_CHARS = 12000
+# Safety limit only; the chunker splits long text. The old 12,000-character cap
+# silently dropped most of long pages.
+MAX_CLEAN_TEXT_CHARS = 300_000
+MAX_SECTIONS = 300
+MAX_NAVIGATION_ITEMS = 300
 MAX_NEARBY_IMAGE_TEXT_CHARS = 300
+MAX_FAQ_ANSWER_CHARS = 1500
+LAYOUT_TABLE_CELL_CHARS = 1000
 
 IMAGE_SOURCE_ATTRS = (
     "src",
@@ -55,40 +108,312 @@ ICON_IMAGE_PATTERNS = (
     "twitter",
     "youtube",
 )
+JS_REQUIRED_PATTERN = re.compile(r"(enable|requires?|turn on)\s+javascript|javascript\s+(is\s+)?(required|disabled)", re.I)
+EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+QUESTION_PREFIX_RE = re.compile(r"^(q\s*[:.)-]|question\s*[:.)-]|q\d+\s*[:.)-])", re.I)
+_TOKEN_SPLIT_RE = re.compile(r"[^a-z0-9]+")
+_CAMEL_RE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
+_SKIP_STRING_TYPES = (Comment, Declaration, Doctype, CData, ProcessingInstruction)
 
+
+# ---------------------------------------------------------------------------
+# Text helpers
+# ---------------------------------------------------------------------------
 
 def _clean_text(text: str) -> str:
     return re.sub(r"\s+", " ", text or "").strip()
+
+
+def _smart_join(strings: Iterable[str]) -> str:
+    """Join text nodes, adding a space only where two words would otherwise fuse."""
+    result = ""
+    for raw in strings:
+        piece = str(raw)
+        if not piece:
+            continue
+        if result and not result[-1].isspace() and not piece[0].isspace():
+            if result[-1].isalnum() and piece[0].isalnum():
+                result += " "
+        result += piece
+    return _clean_text(result)
+
+
+def _visible_strings(element: Tag) -> Iterable[str]:
+    for node in element.find_all(string=True):
+        if isinstance(node, _SKIP_STRING_TYPES):
+            continue
+        yield str(node)
+
+
+def _element_text(element: Tag | None) -> str:
+    if element is None:
+        return ""
+    return _smart_join(_visible_strings(element))
 
 
 def _copy_soup(html: str) -> BeautifulSoup:
     return BeautifulSoup(html or "", "lxml")
 
 
+def _attr_tokens(element: Tag) -> set[str]:
+    """Split class and id values into lowercase whole-word tokens."""
+    values: List[str] = []
+    classes = element.get("class")
+    if isinstance(classes, (list, tuple)):
+        values.extend(str(value) for value in classes)
+    elif classes:
+        values.append(str(classes))
+    if element.get("id"):
+        values.append(str(element.get("id")))
+    tokens: set[str] = set()
+    for value in values:
+        spaced = _CAMEL_RE.sub(" ", value)
+        tokens.update(token for token in _TOKEN_SPLIT_RE.split(spaced.lower()) if token)
+    return tokens
+
+
+def _is_decomposed(element: Any) -> bool:
+    return bool(getattr(element, "decomposed", False))
+
+
+def _link_density(element: Tag) -> float:
+    total = len(_element_text(element))
+    if not total:
+        return 0.0
+    link_chars = sum(len(_element_text(anchor)) for anchor in element.find_all("a"))
+    return min(1.0, link_chars / total)
+
+
+def _is_protected(element: Tag, body_text_length: int) -> bool:
+    """Never delete the page itself, the main content, or a large wrapper."""
+    if element.name in PROTECTED_TAGS:
+        return True
+    if (element.get("role") or "").lower() == "main":
+        return True
+    if element.find(["main", "article", "h1"]) is not None:
+        return True
+    if element.find(attrs={"role": "main"}) is not None:
+        return True
+    if body_text_length >= 200 and len(_element_text(element)) > 0.3 * body_text_length:
+        return True
+    return False
+
+
+# ---------------------------------------------------------------------------
+# Noise and navigation removal
+# ---------------------------------------------------------------------------
+
 def remove_noise(soup: BeautifulSoup) -> None:
-    """Remove obvious non-content elements while preserving possible footer/contact text."""
-    for element in soup.find_all(["script", "style", "noscript", "iframe", "svg"]):
+    """Remove scripts, overlays, cookie bars, and ads without touching main content."""
+    for element in soup.find_all(ALWAYS_REMOVE_TAGS):
         element.decompose()
 
-    for pattern in NOISE_PATTERNS:
-        for element in soup.find_all(class_=lambda value: value and pattern in str(value).lower()):
-            element.decompose()
-        for element in soup.find_all(id=lambda value: value and pattern in str(value).lower()):
-            element.decompose()
-
-    for element in soup.find_all():
-        if element.name in {"img", "table", "thead", "tbody", "tr", "th", "td"}:
+    body = soup.find("body") or soup
+    body_text_length = len(_element_text(body))
+    for element in soup.find_all(True):
+        if _is_decomposed(element) or element.name in PROTECTED_TAGS:
             continue
-        if not element.get_text(strip=True) and not element.find(["img", "table"]):
-            element.decompose()
+        role = (element.get("role") or "").lower()
+        is_dialog = role in NOISE_ROLES or (element.get("aria-modal") or "").lower() == "true"
+        if not is_dialog and not (_attr_tokens(element) & NOISE_TOKENS):
+            continue
+        if _is_protected(element, body_text_length):
+            continue
+        element.decompose()
 
+
+def extract_and_remove_navigation(soup: BeautifulSoup) -> List[str]:
+    """Remove menus from the content tree and return their item labels.
+
+    Menu labels are still useful once per site (for example the list of
+    programmes in a university mega-menu), so they are returned instead of
+    being thrown away.
+    """
+    body = soup.find("body") or soup
+    body_text_length = len(_element_text(body))
+    items: List[str] = []
+    seen: set[str] = set()
+
+    for element in soup.find_all(True):
+        if _is_decomposed(element) or element.name in PROTECTED_TAGS:
+            continue
+        role = (element.get("role") or "").lower()
+        is_semantic_nav = element.name == "nav" or role in NAV_ROLES
+        is_menu_like = bool(_attr_tokens(element) & NAV_TOKENS) and element.name in {"div", "ul", "ol", "section", "aside", "header"}
+        if not is_semantic_nav and not is_menu_like:
+            continue
+        if is_menu_like and not is_semantic_nav and _link_density(element) < 0.5:
+            continue  # e.g. a restaurant "menu" with dishes and prices is content
+        if _is_protected(element, body_text_length):
+            continue
+        for anchor in element.find_all(["a", "button", "li"]):
+            if anchor.name == "li" and anchor.find(["a", "button"]):
+                continue
+            label = _element_text(anchor)
+            key = label.lower()
+            if label and len(label) <= 120 and key not in seen:
+                seen.add(key)
+                items.append(label)
+        element.decompose()
+
+    return items[:MAX_NAVIGATION_ITEMS]
+
+
+# ---------------------------------------------------------------------------
+# Block model
+# ---------------------------------------------------------------------------
+
+def _nearest_block(node: Any, root: Tag) -> Tag:
+    parent = node.parent
+    while parent is not None and parent is not root:
+        if isinstance(parent, Tag) and parent.name in BLOCK_TAGS:
+            return parent
+        parent = parent.parent
+    return root
+
+
+def _has_ancestor(element: Tag, names: set[str], root: Tag) -> bool:
+    current = element
+    while current is not None and current is not root:
+        if isinstance(current, Tag) and current.name in names:
+            return True
+        current = current.parent
+    return isinstance(root, Tag) and root.name in names
+
+
+def _row_text(row: Tag) -> str:
+    cells = [_element_text(cell) for cell in row.find_all(["th", "td"], recursive=False)]
+    cells = [cell for cell in cells if cell]
+    return " | ".join(cells)
+
+
+def collect_blocks(root: Tag, main_root: Tag | None = None) -> List[Dict[str, Any]]:
+    """Return the page text as ordered blocks.
+
+    Each block is a plain dict (JSON-serialisable): ``text``, ``tag``,
+    ``level`` (headings only), ``chrome`` (inside header/footer/aside),
+    ``in_main`` and ``group`` (table id for table rows).
+    """
+    blocks: List[Dict[str, Any]] = []
+    table_ids: Dict[int, int] = {}
+    cell_is_small: Dict[int, bool] = {}
+    current: Tag | None = None
+    parts: List[str] = []
+
+    def row_for(block_element: Tag) -> Tag:
+        """Map text inside a small data-table cell to its row, so a row is one block.
+
+        Big cells (layout tables wrapping whole pages) keep their inner blocks.
+        """
+        if block_element.name == "tr":
+            return block_element
+        cell = block_element.find_parent(["td", "th"])
+        if cell is None:
+            return block_element
+        key = id(cell)
+        if key not in cell_is_small:
+            cell_is_small[key] = len(_element_text(cell)) <= LAYOUT_TABLE_CELL_CHARS
+        if not cell_is_small[key]:
+            return block_element
+        return cell.find_parent("tr") or block_element
+
+    def flush() -> None:
+        if current is None or not parts:
+            return
+        if current.name == "tr":
+            text = _row_text(current) or _smart_join(parts)
+        else:
+            text = _smart_join(parts)
+        if not text:
+            return
+        block: Dict[str, Any] = {
+            "text": text[:MAX_CLEAN_TEXT_CHARS],
+            "tag": current.name,
+            "level": int(current.name[1]) if current.name in HEADING_TAGS else 0,
+            "chrome": _has_ancestor(current, CHROME_TAGS, root),
+            "in_main": bool(main_root is not None and (current is main_root or main_root in current.parents)),
+            "group": 0,
+        }
+        if current.name == "tr":
+            table = current.find_parent("table")
+            if table is not None:
+                block["group"] = table_ids.setdefault(id(table), len(table_ids) + 1)
+        blocks.append(block)
+
+    for node in root.find_all(string=True):
+        if isinstance(node, _SKIP_STRING_TYPES):
+            continue
+        text = str(node)
+        if not text.strip():
+            continue
+        block_element = _nearest_block(node, root)
+        if block_element is not root and block_element.name not in HEADING_TAGS:
+            block_element = row_for(block_element)
+        if block_element is not current:
+            flush()
+            current = block_element
+            parts = []
+        parts.append(text)
+    flush()
+
+    # A <tr> appears once per string inside it; merge consecutive duplicates.
+    merged: List[Dict[str, Any]] = []
+    for block in blocks:
+        if merged and block["tag"] == "tr" and merged[-1]["tag"] == "tr" and merged[-1]["text"] == block["text"]:
+            continue
+        merged.append(block)
+    return merged
+
+
+def build_sections_from_blocks(blocks: List[Dict[str, Any]], intro_heading: str = "") -> List[Dict[str, Any]]:
+    """Group blocks under the nearest preceding heading (h1-h4)."""
+    sections: List[Dict[str, Any]] = []
+    heading = intro_heading
+    level = 0
+    parts: List[str] = []
+
+    def flush() -> None:
+        content = _clean_text(" ".join(parts))
+        if content:
+            sections.append({"heading": heading, "level": level, "content": content})
+
+    for block in blocks:
+        if block.get("tag") in HEADING_TAGS and int(block.get("level") or 0) <= SECTION_HEADING_MAX_LEVEL:
+            flush()
+            heading = block["text"]
+            level = int(block["level"])
+            parts = []
+        else:
+            parts.append(block.get("text", ""))
+    flush()
+    return sections[:MAX_SECTIONS]
+
+
+def build_content_from_blocks(blocks: List[Dict[str, Any]]) -> str:
+    return _clean_text(" ".join(block.get("text", "") for block in blocks))[:MAX_CLEAN_TEXT_CHARS]
+
+
+def core_text_from_blocks(blocks: List[Dict[str, Any]]) -> str:
+    """Text of the page's own content: <main> if present, else non-chrome blocks."""
+    in_main = [block for block in blocks if block.get("in_main")]
+    selected = in_main if len(build_content_from_blocks(in_main)) >= 200 else [
+        block for block in blocks if not block.get("chrome")
+    ]
+    if not selected:
+        selected = blocks
+    return build_content_from_blocks(selected)
+
+
+# ---------------------------------------------------------------------------
+# Field extractors
+# ---------------------------------------------------------------------------
 
 def extract_page_metadata(soup: BeautifulSoup, page_url: str) -> Dict[str, Any]:
     title = ""
     if soup.title:
         title = _clean_text(soup.title.get_text())
     if not title and soup.find("h1"):
-        title = _clean_text(soup.find("h1").get_text())
+        title = _element_text(soup.find("h1"))
 
     description = ""
     meta_desc = soup.find("meta", attrs={"name": lambda value: value and value.lower() == "description"})
@@ -105,6 +430,8 @@ def extract_page_metadata(soup: BeautifulSoup, page_url: str) -> Dict[str, Any]:
         key = tag.get("property", "")[3:]
         if key and tag.get("content"):
             open_graph[key] = _clean_text(tag["content"])
+    if not description and open_graph.get("description"):
+        description = open_graph["description"]
 
     twitter = {}
     for tag in soup.find_all("meta", attrs={"name": lambda value: value and value.lower().startswith("twitter:")}):
@@ -112,21 +439,27 @@ def extract_page_metadata(soup: BeautifulSoup, page_url: str) -> Dict[str, Any]:
         if key and tag.get("content"):
             twitter[key] = _clean_text(tag["content"])
 
+    html_tag = soup.find("html")
+    language = _clean_text(html_tag.get("lang", "")) if html_tag else ""
+
+    metadata = {
+        "canonical": canonical,
+        "open_graph": open_graph,
+        "twitter": twitter,
+    }
+    if language:
+        metadata["language"] = language
     return {
         "title": title,
         "description": description,
-        "metadata": {
-            "canonical": canonical,
-            "open_graph": open_graph,
-            "twitter": twitter,
-        },
+        "metadata": metadata,
     }
 
 
 def extract_headings(soup: BeautifulSoup) -> List[Dict[str, Any]]:
     headings = []
     for heading in soup.find_all(re.compile(r"^h[1-6]$")):
-        text = _clean_text(heading.get_text(" "))
+        text = _element_text(heading)
         if text:
             headings.append({"level": int(heading.name[1]), "text": text})
     return headings
@@ -136,11 +469,23 @@ def extract_paragraphs(soup: BeautifulSoup) -> List[str]:
     paragraphs = []
     seen = set()
     for paragraph in soup.find_all("p"):
-        text = _clean_text(paragraph.get_text(" "))
+        text = _element_text(paragraph)
         if text and text not in seen:
             paragraphs.append(text)
             seen.add(text)
     return paragraphs
+
+
+def _li_own_text(item: Tag) -> str:
+    """Text of a list item without the text of lists nested inside it."""
+    strings = []
+    for node in item.find_all(string=True):
+        if isinstance(node, _SKIP_STRING_TYPES):
+            continue
+        nearest_list = node.find_parent(["ul", "ol"])
+        if nearest_list is item.parent:
+            strings.append(str(node))
+    return _smart_join(strings)
 
 
 def extract_lists(soup: BeautifulSoup) -> List[Dict[str, Any]]:
@@ -148,7 +493,7 @@ def extract_lists(soup: BeautifulSoup) -> List[Dict[str, Any]]:
     for list_node in soup.find_all(["ul", "ol"]):
         items = []
         for item in list_node.find_all("li", recursive=False):
-            text = _clean_text(item.get_text(" "))
+            text = _li_own_text(item)
             if text:
                 items.append(text)
         if items:
@@ -156,24 +501,42 @@ def extract_lists(soup: BeautifulSoup) -> List[Dict[str, Any]]:
     return lists
 
 
+def _is_layout_table(table: Tag) -> bool:
+    if table.find("table") is not None:
+        return True
+    return any(len(_element_text(cell)) > LAYOUT_TABLE_CELL_CHARS for cell in table.find_all(["td", "th"]))
+
+
 def extract_tables(soup: BeautifulSoup) -> List[Dict[str, Any]]:
     tables = []
     for table in soup.find_all("table"):
+        if _is_layout_table(table):
+            continue
         rows = []
-        headers = []
-        for row_index, tr in enumerate(table.find_all("tr")):
-            cells = [_clean_text(cell.get_text(" ")) for cell in tr.find_all(["th", "td"])]
-            cells = [cell for cell in cells if cell]
-            if not cells:
+        headers: List[str] = []
+        for tr in table.find_all("tr"):
+            if tr.find_parent("table") is not table:
                 continue
-            has_header_cells = bool(tr.find_all("th"))
-            if has_header_cells and not headers:
-                headers = cells
+            cells: List[str] = []
+            for cell in tr.find_all(["th", "td"], recursive=False):
+                text = _element_text(cell)
+                try:
+                    span = max(1, min(int(cell.get("colspan", 1)), 10))
+                except (TypeError, ValueError):
+                    span = 1
+                cells.extend([text] * span)
+            if not any(cells):
                 continue
-            if row_index == 0 and not headers and len(cells) > 1 and tr.find_all("th"):
+            in_thead = tr.find_parent("thead") is not None
+            # Only an all-<th> (or <thead>) first row is a header row. Tables
+            # with a <th> in the first column are row-labelled, not headed.
+            is_header_row = all(cell.name == "th" for cell in tr.find_all(["th", "td"], recursive=False))
+            if not headers and not rows and (in_thead or is_header_row):
                 headers = cells
                 continue
             rows.append(cells)
+        while headers and not headers[-1]:
+            headers.pop()
         if headers or rows:
             tables.append({"headers": headers, "rows": rows})
     return tables
@@ -186,13 +549,16 @@ def extract_links(soup: BeautifulSoup, base_url: str) -> List[Dict[str, Any]]:
     seen = set()
     for anchor in soup.find_all("a", href=True):
         href = anchor.get("href", "").strip()
-        if not href or href.startswith(SKIP_LINK_SCHEMES):
+        if not href or href.lower().startswith(SKIP_LINK_SCHEMES):
             continue
         absolute_url = urljoin(base_url, href)
         parsed_url = urlparse(absolute_url)
         if parsed_url.scheme not in {"http", "https"}:
             continue
-        text = _clean_text(anchor.get_text(" ") or anchor.get("aria-label", "") or anchor.get("title", ""))
+        text = _element_text(anchor) or _clean_text(anchor.get("aria-label", "") or anchor.get("title", ""))
+        if not text:
+            image = anchor.find("img", alt=True)
+            text = _clean_text(image.get("alt", "")) if image else ""
         if not text:
             continue
         key = (text, absolute_url)
@@ -205,6 +571,37 @@ def extract_links(soup: BeautifulSoup, base_url: str) -> List[Dict[str, Any]]:
             "is_internal": parsed_url.netloc.lower() == base_domain,
         })
     return links
+
+
+def extract_contacts(soup: BeautifulSoup) -> Dict[str, List[str]]:
+    """Collect e-mail addresses, phone numbers and WhatsApp links from hrefs.
+
+    Icon-only contact links have no visible text, so without this they never
+    reach the knowledge base.
+    """
+    emails: List[str] = []
+    phones: List[str] = []
+    whatsapp: List[str] = []
+
+    def add(values: List[str], value: str) -> None:
+        value = value.strip()
+        if value and value not in values:
+            values.append(value)
+
+    for anchor in soup.find_all("a", href=True):
+        href = anchor["href"].strip()
+        lower = href.lower()
+        if lower.startswith("mailto:"):
+            address = href[7:].split("?", 1)[0]
+            if EMAIL_RE.fullmatch(address):
+                add(emails, address)
+        elif lower.startswith("tel:"):
+            number = re.sub(r"[^\d+]", "", href[4:])
+            if len(re.sub(r"\D", "", number)) >= 6:
+                add(phones, number)
+        elif "wa.me/" in lower or "api.whatsapp.com" in lower or "whatsapp://" in lower:
+            add(whatsapp, href)
+    return {"emails": emails[:20], "phones": phones[:20], "whatsapp": whatsapp[:10]}
 
 
 def _first_srcset_candidate(srcset: str) -> str:
@@ -451,41 +848,127 @@ def extract_images(soup: BeautifulSoup, page_url: str) -> List[Dict[str, Any]]:
     return list(images_by_url.values())
 
 
-def extract_faqs(soup: BeautifulSoup) -> List[Dict[str, str]]:
-    faqs = []
-    seen = set()
+def _looks_like_question(text: str) -> bool:
+    text = _clean_text(text)
+    if not text or len(text) > 300:
+        return False
+    return text.endswith("?") or bool(QUESTION_PREFIX_RE.match(text))
+
+
+def _strip_question_prefix(text: str) -> str:
+    return _clean_text(QUESTION_PREFIX_RE.sub("", text, count=1))
+
+
+def _iter_json_ld_nodes(value: Any) -> Iterable[Dict[str, Any]]:
+    if isinstance(value, dict):
+        yield value
+        for nested in value.values():
+            yield from _iter_json_ld_nodes(nested)
+    elif isinstance(value, list):
+        for item in value:
+            yield from _iter_json_ld_nodes(item)
+
+
+def _json_ld_types(node: Dict[str, Any]) -> set[str]:
+    raw = node.get("@type")
+    values = raw if isinstance(raw, list) else [raw]
+    return {str(value).lower() for value in values if value}
+
+
+def _html_fragment_text(value: Any) -> str:
+    text = str(value or "")
+    if "<" in text and ">" in text:
+        return _element_text(BeautifulSoup(text, "lxml"))
+    return _clean_text(text)
+
+
+def extract_faqs(
+    soup: BeautifulSoup,
+    blocks: List[Dict[str, Any]] | None = None,
+    structured_data: List[Any] | None = None,
+) -> List[Dict[str, str]]:
+    """Extract question/answer pairs from common FAQ patterns.
+
+    Supported: <details>/<summary>, schema.org FAQPage JSON-LD, ARIA accordions
+    (aria-controls), <dt>/<dd> pairs, and question headings followed by text.
+    Headings only count as questions when they end in "?" or start with "Q:".
+    """
+    faqs: List[Dict[str, str]] = []
+    seen: set[str] = set()
+
+    def add(question: str, answer: str) -> None:
+        question = _clean_text(question)
+        answer = _clean_text(answer)[:MAX_FAQ_ANSWER_CHARS]
+        key = question.lower()
+        if question and answer and key not in seen and answer.lower() != key:
+            faqs.append({"question": question, "answer": answer})
+            seen.add(key)
 
     for details in soup.find_all("details"):
         summary = details.find("summary")
-        question = _clean_text(summary.get_text(" ")) if summary else ""
+        question = _element_text(summary) if summary else ""
         answer_parts = [
-            _clean_text(child.get_text(" ") if hasattr(child, "get_text") else str(child))
+            _element_text(child) if isinstance(child, Tag) else _clean_text(str(child))
             for child in details.children
-            if child != summary
+            if child is not summary and not isinstance(child, _SKIP_STRING_TYPES)
         ]
-        answer = _clean_text(" ".join(part for part in answer_parts if part))
-        if question and answer and question not in seen:
-            faqs.append({"question": question, "answer": answer})
-            seen.add(question)
+        add(question, " ".join(part for part in answer_parts if part))
 
-    question_pattern = re.compile(r"\?$|^(q:|question:)|\b(what|why|how|when|where|who|can|do|does|is|are)\b", re.I)
-    for heading in soup.find_all(["h2", "h3", "h4"]):
-        question = _clean_text(heading.get_text(" "))
-        if not question or question in seen or not question_pattern.search(question):
+    for node in _iter_json_ld_nodes(structured_data or []):
+        if "question" not in _json_ld_types(node):
             continue
-        answer_parts = []
-        for sibling in heading.find_next_siblings():
-            if sibling.name in ["h1", "h2", "h3", "h4"]:
+        answer = node.get("acceptedAnswer") or node.get("suggestedAnswer")
+        if isinstance(answer, list):
+            answer = answer[0] if answer else {}
+        answer_text = answer.get("text") if isinstance(answer, dict) else answer
+        add(_html_fragment_text(node.get("name")), _html_fragment_text(answer_text))
+
+    for trigger in soup.find_all(attrs={"aria-controls": True}):
+        question = _element_text(trigger)
+        if not _looks_like_question(question):
+            continue
+        panel = soup.find(id=str(trigger.get("aria-controls")).split()[0])
+        if panel is not None and panel is not trigger:
+            add(question, _element_text(panel))
+
+    for term in soup.find_all("dt"):
+        question = _element_text(term)
+        definition = term.find_next_sibling("dd")
+        if definition is not None and _looks_like_question(question):
+            add(question, _element_text(definition))
+
+    if blocks is None:
+        body = soup.find("body") or soup
+        blocks = collect_blocks(body)
+    for index, block in enumerate(blocks):
+        tag = block.get("tag")
+        question = block.get("text", "")
+        is_heading = tag in HEADING_TAGS
+        if is_heading or tag in {"dt", "summary", "button"}:
+            if not _looks_like_question(question):
+                continue
+        elif tag in {"p", "div", "li"}:
+            # Ordinary text only counts with an explicit "Q:" style prefix;
+            # a sentence such as "Want to know more?" is not an FAQ.
+            if not QUESTION_PREFIX_RE.match(question) or len(question) > 300:
+                continue
+        else:
+            continue
+
+        answer_parts: List[str] = []
+        for following in blocks[index + 1:]:
+            following_text = following.get("text", "")
+            if following.get("tag") in HEADING_TAGS:
                 break
-            text = _clean_text(sibling.get_text(" "))
-            if text:
-                answer_parts.append(text)
-            if len(" ".join(answer_parts)) > 600:
+            if not is_heading and (_looks_like_question(following_text) or QUESTION_PREFIX_RE.match(following_text)):
                 break
-        answer = _clean_text(" ".join(answer_parts))
-        if answer:
-            faqs.append({"question": question, "answer": answer[:1000]})
-            seen.add(question)
+            answer_parts.append(re.sub(r"^(a|answer)\s*[:.)-]\s*", "", following_text, flags=re.I))
+            if len(" ".join(answer_parts)) > MAX_FAQ_ANSWER_CHARS:
+                break
+            if not is_heading:
+                break  # non-heading question: the answer is the next block
+        if answer_parts:
+            add(_strip_question_prefix(question) if QUESTION_PREFIX_RE.match(question) else question, " ".join(answer_parts))
 
     return faqs
 
@@ -493,44 +976,43 @@ def extract_faqs(soup: BeautifulSoup) -> List[Dict[str, str]]:
 def extract_json_ld(soup: BeautifulSoup) -> List[Any]:
     records = []
     for script in soup.find_all("script", type=lambda value: value and "ld+json" in value.lower()):
-        raw = script.string or script.get_text()
+        raw = (script.string or script.get_text() or "").strip()
         if not raw:
             continue
-        try:
-            records.append(json.loads(raw))
-        except json.JSONDecodeError:
-            continue
+        candidates = [raw, raw.replace("<!--", "").replace("-->", "").strip()]
+        for candidate in candidates:
+            try:
+                records.append(json.loads(candidate, strict=False))
+                break
+            except json.JSONDecodeError:
+                continue
     return records
 
 
 def extract_sections(soup: BeautifulSoup) -> List[Dict[str, Any]]:
-    sections = []
-    for heading in soup.find_all(["h1", "h2", "h3"]):
-        heading_text = _clean_text(heading.get_text(" "))
-        if not heading_text:
-            continue
-        content_parts = []
-        for sibling in heading.find_next_siblings():
-            if sibling.name in ["h1", "h2", "h3"]:
-                break
-            text = _clean_text(sibling.get_text(" "))
-            if text:
-                content_parts.append(text)
-            if len(" ".join(content_parts)) > 2000:
-                break
-        content = _clean_text(" ".join(content_parts))
-        if content:
-            sections.append({
-                "heading": heading_text,
-                "level": int(heading.name[1]),
-                "content": content[:2000],
-            })
-    return sections[:20]
+    """Sections from heading to next heading, in document order (any nesting)."""
+    body = soup.find("body") or soup
+    return build_sections_from_blocks(collect_blocks(body))
+
+
+def _find_main_root(soup: BeautifulSoup) -> Tag | None:
+    main = soup.find("main") or soup.find(attrs={"role": "main"})
+    if main is not None:
+        return main
+    articles = soup.find_all("article")
+    if len(articles) == 1:
+        return articles[0]
+    return None
 
 
 def build_clean_text(soup: BeautifulSoup) -> str:
-    main_element = soup.find("main") or soup.find("article") or soup.find("body") or soup
-    return _clean_text(main_element.get_text(" "))[:MAX_CLEAN_TEXT_CHARS]
+    """Full page text. Uses <main> when it holds most of the page, else <body>.
+
+    The old version used soup.find("article"), which on listing pages (product
+    grids, blog indexes) returned only the first card.
+    """
+    body = soup.find("body") or soup
+    return build_content_from_blocks(collect_blocks(body))
 
 
 def calculate_page_quality(
@@ -581,19 +1063,31 @@ def extract_static_page(
         )
 
     soup = _copy_soup(html)
+    requires_javascript = any(
+        JS_REQUIRED_PATTERN.search(_element_text(noscript)) for noscript in soup.find_all("noscript")
+    )
     page_metadata = extract_page_metadata(soup, page_url)
     structured_data = extract_json_ld(soup)
     images = extract_images(soup, page_url)
+    links = extract_links(soup, page_url)
+    contacts = extract_contacts(soup)
+
     remove_noise(soup)
+    navigation = extract_and_remove_navigation(soup)
+
+    body = soup.find("body") or soup
+    main_root = _find_main_root(soup)
+    blocks = collect_blocks(body, main_root=main_root)
 
     headings = extract_headings(soup)
     paragraphs = extract_paragraphs(soup)
     lists = extract_lists(soup)
     tables = extract_tables(soup)
-    links = extract_links(soup, page_url)
-    faqs = extract_faqs(soup)
-    sections = extract_sections(soup)
-    content = build_clean_text(soup)
+    faqs = extract_faqs(soup, blocks=blocks, structured_data=structured_data)
+    sections = build_sections_from_blocks(blocks)
+    content = build_content_from_blocks(blocks)
+    core_text = core_text_from_blocks(blocks)
+
     quality = calculate_page_quality(
         content=content,
         paragraphs=paragraphs,
@@ -603,10 +1097,16 @@ def extract_static_page(
         status_code=status_code,
         errors=errors or [],
     )
+    quality["core_text_length"] = len(core_text)
+    quality["content_hash"] = content_hash(core_text)
+    quality["simhash"] = simhash_hex(core_text)
+    quality["block_count"] = len(blocks)
+    if requires_javascript:
+        quality["requires_javascript"] = True
     if quality_extra:
         quality.update({key: value for key, value in quality_extra.items() if value not in (None, "")})
 
-    return create_page_record(
+    page = create_page_record(
         page_url=page_url,
         page_type=page_type,
         title=page_metadata["title"],
@@ -625,3 +1125,9 @@ def extract_static_page(
         quality=quality,
         content=content,
     )
+    page["navigation"] = navigation
+    page["contacts"] = contacts
+    # Temporary, JSON-safe block list used by cross-page processing
+    # (boilerplate removal, Markdown export). Stripped before saving.
+    page["_blocks"] = blocks
+    return page
