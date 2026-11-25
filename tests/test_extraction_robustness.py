@@ -156,3 +156,23 @@ def test_quality_has_fingerprints_and_js_hint():
     rich = _page(f"<html><body>{MAIN}</body></html>")
     assert rich["quality"]["content_hash"]
     assert len(rich["quality"]["simhash"]) == 16
+
+
+def test_trafilatura_cross_check_records_coverage_and_restores_dropped_text():
+    body = "".join(
+        f"<p>The robotics lab section {i} describes twelve workstations, safety training and two industrial arms.</p>"
+        for i in range(6)
+    )
+    page = _page(
+        "<html><head><title>Committees</title></head><body><article><h1>Committees</h1>" + body +
+        "<section class='ad-hoc-committee'><h2>Ad-hoc committee</h2><p>The ad-hoc committee reviews fee waiver "
+        "requests every Friday at 2 pm in room B-12.</p></section></article></body></html>"
+    )
+    quality = page["quality"]
+    # The structural pass reads class token "ad" as an advert and drops the
+    # section; Trafilatura sees it as main text, so it is restored.
+    assert "fee waiver requests every Friday" in page["content"]
+    assert quality["main_text_recovered_paragraphs"] == 1
+    assert 0.5 < quality["main_text_coverage"] < 1
+    clean = _page(f"<html><body>{MAIN}</body></html>")
+    assert clean["quality"].get("main_text_recovered_paragraphs", 0) == 0

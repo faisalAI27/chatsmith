@@ -1,0 +1,103 @@
+{
+  "description": "Extraction benchmark. Each fact is a string verified (Nov 2026) to be on the live site; fact recall = facts found anywhere in the extracted knowledge / facts listed. Sites cover static, JavaScript-rendered, infinite-scroll, delayed-rendering, table-heavy, WordPress, Shopify and documentation sites.",
+  "sites": [
+    {
+      "name": "books_static_catalog",
+      "url": "https://books.toscrape.com",
+      "kind": "static HTML, product listing + detail pages",
+      "max_pages": 30,
+      "facts": [
+        "A Light in the Attic",
+        "£51.77",
+        "Tipping the Velvet",
+        "It's hard to imagine a world without A Light in the Attic",
+        "a897fe39b1053632",
+        "Full Moon over Noah's",
+        "Vagabonding: An Uncommon Guide"
+      ]
+    },
+    {
+      "name": "quotes_javascript",
+      "url": "https://quotes.toscrape.com/js/",
+      "kind": "content rendered by JavaScript (no quotes in the HTML source)",
+      "max_pages": 12,
+      "facts": [
+        "The world as we have created it is a process of our thinking",
+        "This life is what you make it",
+        "A reader lives a thousand lives before he dies",
+        "Only in the darkness can you see the stars",
+        "Do one thing every day that scares you"
+      ]
+    },
+    {
+      "name": "quotes_infinite_scroll",
+      "url": "https://quotes.toscrape.com/scroll",
+      "kind": "infinite scroll (content loaded by XHR while scrolling)",
+      "max_pages": 3,
+      "facts": [
+        "The world as we have created it is a process of our thinking",
+        "A reader lives a thousand lives before he dies",
+        "Do one thing every day that scares you"
+      ]
+    },
+    {
+      "name": "quotes_delayed_render",
+      "url": "https://quotes.toscrape.com/js-delayed/",
+      "kind": "stress test: JavaScript renders content 10 seconds after load",
+      "max_pages": 2,
+      "facts": [
+        "The world as we have created it is a process of our thinking",
+        "It is our choices, Harry, that show what we truly are"
+      ]
+    },
+    {
+      "name": "hockey_tables",
+      "url": "https://www.scrapethissite.com/pages/forms/",
+      "kind": "paginated HTML tables (section crawl)",
+      "max_pages": 6,
+      "facts": [
+        "Boston Bruins",
+        "Buffalo Sabres",
+        "Goals For (GF)",
+        "Winnipeg Jets"
+      ]
+    },
+    {
+      "name": "giki_university_wordpress",
+      "url": "https://giki.edu.pk/",
+      "kind": "university site, WordPress/Elementor, mega-menu",
+      "max_pages": 40,
+      "facts": [
+        "Topi 23640",
+        "281026",
+        "How to apply for GIKI Admissions?",
+        "admissions.giki.edu.pk",
+        "District Revenue Office"
+      ]
+    },
+    {
+      "name": "lama_retail_shopify",
+      "url": "https://pk.lamaretail.com/",
+      "kind": "e-commerce, Shopify, many product variants",
+      "max_pages": 30,
+      "facts": [
+        "0311-1115262",
+        "22-A, Block K Gulberg-II",
+        "within 3 to 5 working days",
+        "PostEx",
+        "Dolmen Mall"
+      ]
+    },
+    {
+      "name": "python_docs_section",
+      "url": "https://docs.python.org/3/tutorial/",
+      "kind": "documentation section (crawl limited to /3/tutorial/)",
+      "max_pages": 25,
+      "facts": [
+        "An Informal Introduction to Python",
+        "The glob module provides a function for making file lists from directory wildcard searches",
+        "Brief tour of the standard library"
+      ]
+    }
+  ]
+}

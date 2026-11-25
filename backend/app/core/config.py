@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     playwright_wait_ms: int = 1000
     playwright_block_heavy_resources: bool = True
     playwright_scroll_steps: int = 4
+    playwright_content_wait_ms: int = 10000
     playwright_max_concurrent_pages: int = 2
 
     # Crawler (see backend/app/services/crawler.py)
@@ -32,6 +33,9 @@ class Settings(BaseSettings):
     crawler_boilerplate_ratio: float = 0.5
     crawler_time_budget_seconds: int = 900
     crawler_allow_private_hosts: bool = False
+
+    # Trafilatura cross-check of each page's main text (coverage metric + safety net)
+    extractor_trafilatura_check: bool = True
 
     # Optional extras around the crawl
     enable_web_search_supplement: bool = False

@@ -28,6 +28,8 @@ DEFAULT_STABILIZE_MS = 3000
 DEFAULT_MAX_CONCURRENT_PAGES = 2
 MIN_TEXT_AFTER_TIMEOUT = 50
 MIN_DOM_GRACE_MS = 8000
+MIN_RENDERED_TEXT_CHARS = 200
+DEFAULT_CONTENT_WAIT_MS = 10000
 PLAYWRIGHT_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -215,16 +217,37 @@ def _render_result(
     }
 
 
-async def _wait_for_dom_stable(page, max_ms: int, interval_ms: int = 300) -> None:
-    """Poll visible text length until it stops changing (client data has loaded)."""
+def get_playwright_content_wait_ms() -> int:
+    return _non_negative_int(
+        _settings_value("playwright_content_wait_ms", DEFAULT_CONTENT_WAIT_MS),
+        DEFAULT_CONTENT_WAIT_MS,
+    )
+
+
+async def _wait_for_dom_stable(
+    page,
+    max_ms: int,
+    interval_ms: int = 300,
+    content_wait_ms: int | None = None,
+) -> None:
+    """Poll visible text length until it stops changing (client data has loaded).
+
+    A page that still shows almost no text is an unrendered app shell, not a
+    stable page, so it gets a longer wait for content to appear (slow APIs,
+    delayed rendering).
+    """
+    content_wait = get_playwright_content_wait_ms() if content_wait_ms is None else content_wait_ms
     previous = -1
     waited = 0
-    while waited <= max_ms:
+    while True:
         try:
             current = int(await page.evaluate(_TEXT_LENGTH_JS) or 0)
         except Exception:
             return
-        if current == previous and current > 0:
+        limit = max_ms if current >= MIN_RENDERED_TEXT_CHARS else max(max_ms, content_wait)
+        if current >= MIN_RENDERED_TEXT_CHARS and current == previous:
+            return
+        if waited >= limit:
             return
         previous = current
         await page.wait_for_timeout(interval_ms)

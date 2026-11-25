@@ -8,12 +8,16 @@ The current MVP is focused on public commercial, shopping, and customer-service 
 
 - FastAPI backend with synchronous development job endpoint.
 - React/Vite frontend for URL submission, generation progress, and chat.
-- Static scraping with `aiohttp`, BeautifulSoup, and `lxml`.
-- Browser-rendered scraping with Playwright/Chromium for JavaScript-rendered public pages.
-- URL discovery from homepage links, `robots.txt` sitemap references, and common sitemap files.
-- Targeted page discovery for specific article/content URLs.
-- Structured extraction for metadata, headings, paragraphs, sections, lists, FAQs, tables, links, JSON-LD, OpenGraph/Twitter metadata, and image metadata.
-- JSON knowledge storage in `backend/knowledge_files/`.
+- **Site crawler**: follows links from every page plus sitemaps, within a configurable page/depth budget (default 100 pages, depth 5); whole-site, section (`/docs/`) or single-page scope.
+- robots.txt per RFC 9309 (longest match, `Allow`, wildcards, crawl-delay), polite request pacing, private-network (SSRF) guard.
+- Static fetching with `aiohttp` (charset-safe decoding, content-type and size checks, `Retry-After` handling).
+- JavaScript rendering with one shared Playwright/Chromium browser per crawl: auto-scroll for lazy/infinite content, waits for client-side content, expands `<details>`, flattens shadow DOM, keeps partial DOM on slow pages.
+- Duplicate control: same URL after redirects/index files, canonical URLs, identical content, near-duplicates (SimHash, e.g. product colour variants).
+- Structured extraction for metadata, headings, sections, paragraphs, lists, FAQs (headings, accordions, `<details>`, JSON-LD FAQPage), tables, links, contacts (mailto/tel/WhatsApp), JSON-LD, OpenGraph/Twitter metadata, and image metadata.
+- Cross-page boilerplate removal: header/footer/menu text repeated across pages is removed from each page and kept once in a `site_wide` record.
+- Trafilatura cross-check per page (`quality.main_text_coverage`) that also restores main-text paragraphs the structural pass dropped.
+- Linked PDF and Word (`.docx`) documents extracted as `document` pages (pdfplumber / python-docx).
+- JSON knowledge storage in `backend/knowledge_files/`, plus JSONL, per-page Markdown and a crawl report under `backend/knowledge_files/exports/`.
 - Stable `website_id` generation from normalized URLs.
 - RAG chunking with chunk types such as `section`, `paragraph_group`, `faq`, `table`, `image_context`, `structured_data`, and `social_link`.
 - OpenAI embeddings and persistent local ChromaDB indexing.
@@ -27,10 +31,11 @@ The current MVP is focused on public commercial, shopping, and customer-service 
 ```text
 Website URL
   -> normalize URL and check JSON cache
-  -> discover candidate pages
-  -> fetch static HTML or render with Playwright when needed
-  -> extract structured page data
-  -> save v2 JSON knowledge file
+  -> read robots.txt + sitemaps, seed the crawl frontier
+  -> crawl: fetch static HTML, render with Playwright when needed,
+     extract each page, follow its links, skip duplicates
+  -> remove cross-page boilerplate (kept once as a site_wide page)
+  -> save v2 JSON knowledge file + JSONL/Markdown/crawl report exports
   -> build RAG chunks
   -> embed chunks with OpenAI
   -> upsert chunks into local ChromaDB
@@ -55,9 +60,17 @@ backend/app/
   models/                   # Pydantic request/response models
   services/
     scrape_pipeline.py      # main scrape/cache/job pipeline
-    static_extractor.py     # structured static HTML extraction
-    browser_renderer.py     # Playwright render support
-    url_discovery.py        # sitemap/homepage URL discovery and ranking
+    crawler.py              # frontier crawler: scope, budget, robots, dedup, report
+    page_fetcher.py         # HTTP fetch + render-mode selection per URL
+    browser_renderer.py     # shared Playwright browser session and rendering
+    static_extractor.py     # structured HTML extraction (block model)
+    main_content.py         # Trafilatura cross-check of main text
+    document_extractor.py   # PDF / DOCX extraction
+    boilerplate.py          # cross-page template removal + site_wide page
+    knowledge_export.py     # JSONL / Markdown / crawl report export
+    robots.py               # robots.txt parser (RFC 9309)
+    text_fingerprint.py     # content hash + SimHash for duplicate detection
+    url_discovery.py        # sitemap/link discovery, URL filters and ranking
     scraper_schema.py       # v2 JSON shape helpers
     chunker.py              # JSON knowledge -> RAG chunks
     embedding_service.py    # OpenAI embedding abstraction
@@ -79,9 +92,12 @@ evaluation/
   results/                  # generated eval outputs, ignored by Git
   README.md                 # evaluation workflow
 
+  scrape_benchmark/         # extraction benchmark sites, golden facts, results
+
 scripts/
   run_chatbot_eval.py       # run question sets against /api/chat/
   summarize_chatbot_eval.py # summarize CSV/JSONL eval outputs
+  run_scrape_benchmark.py   # crawl benchmark sites and measure fact recall
 
 tests/                      # backend/service/tooling tests
 requirements.txt            # backend dependencies
@@ -248,9 +264,12 @@ Content-Type: application/json
 
 {
   "url": "https://example.com",
-  "force_refresh": false
+  "force_refresh": false,
+  "max_pages": 50
 }
 ```
+
+`max_pages` is optional (default `CRAWLER_MAX_PAGES`).
 
 Successful job stats include fields such as:
 
@@ -261,6 +280,8 @@ Successful job stats include fields such as:
 - `vector_indexed`
 - `vector_indexing_summary`
 - `vector_indexing_warning`
+- `crawl_report`: pages stored, duplicates, failed/skipped URLs by reason, pages rendered, duration
+- `knowledge_exports`: paths of the JSONL / Markdown / crawl report exports
 - `system_prompt` for temporary legacy fallback
 
 Chat:
@@ -304,41 +325,55 @@ Response shape:
 
 ## Scraping System
 
-The scraper is designed for public website content only.
+The crawler is designed for public website content only.
 
-Render modes:
+### Crawl scope and budget
 
-- `SCRAPER_RENDER_MODE=auto`: default. Static fetch first, then Playwright if static extraction is weak.
-- `SCRAPER_RENDER_MODE=browser`: use Playwright for selected pages, with static fallback if rendering fails.
-- `SCRAPER_RENDER_MODE=static`: use static HTML only, useful for tests and debugging.
+The submitted URL decides the scope:
 
-URL discovery uses:
+| URL | Scope | What is crawled |
+| --- | --- | --- |
+| `https://site.com` | `site` | the whole site (same host; subdomains with `CRAWLER_INCLUDE_SUBDOMAINS=true`) |
+| `https://site.com/docs/` (ends with `/`) | `section` | only URLs under `/docs/` |
+| `https://site.com/blog/post` | `page` | that page plus up to `CRAWLER_SPECIFIC_PAGE_MAX_PAGES` related pages |
 
-- homepage internal links
-- `robots.txt` sitemap references
-- `/sitemap.xml`
-- `/sitemap_index.xml`
-- `/sitemap-index.xml`
-- URL filtering for search/result/query-heavy pages
-- priority ranking for useful pages
-- specific-page intent detection for article/content URLs
+The frontier is a priority queue: about/contact/FAQ/pricing pages and shallow pages come first, so a budget-limited crawl still gets the most useful pages. Links are followed from every fetched page and from sitemaps (`robots.txt` `Sitemap:` lines, `/sitemap.xml`, sitemap indexes, `.xml.gz`).
 
-Structured extraction includes:
+Budget settings: `CRAWLER_MAX_PAGES` (100), `CRAWLER_MAX_DEPTH` (5), `CRAWLER_TIME_BUDGET_SECONDS` (900), `CRAWLER_CONCURRENCY` (4), `CRAWLER_POLITENESS_DELAY_MS` (250, raised to the site's `Crawl-delay`).
 
-- title and meta description
-- canonical URL
-- OpenGraph and Twitter metadata
-- headings
-- paragraphs
-- sections
-- lists
-- FAQs
-- tables
-- useful links
-- image metadata
-- JSON-LD structured data
-- clean page text
-- page quality metadata
+### What is skipped (and reported)
+
+Every skipped or failed URL is counted in `crawl_report`:
+
+- disallowed by `robots.txt` (set `CRAWLER_RESPECT_ROBOTS=false` only for sites you own)
+- off-site, login/cart/account, search-result and tracking URLs
+- duplicates: same URL after redirects or `/index.html`, `rel=canonical` copies, identical text, near-identical text (SimHash distance ≤ `CRAWLER_NEAR_DUPLICATE_DISTANCE`)
+- private/local addresses (`CRAWLER_ALLOW_PRIVATE_HOSTS=false`)
+- pages left with no page-specific text after boilerplate removal
+
+### Render modes
+
+- `SCRAPER_RENDER_MODE=auto`: default. Static fetch first; Playwright when the page's own text is weak, the page says JavaScript is required, or the static fetch is refused (e.g. bot protection). The richer of the two results is kept.
+- `SCRAPER_RENDER_MODE=browser`: Playwright for every page, static fallback if rendering fails.
+- `SCRAPER_RENDER_MODE=static`: static HTML only, useful for tests and debugging.
+
+Rendering uses one Chromium per crawl (`PLAYWRIGHT_MAX_CONCURRENT_PAGES` tabs). Each render waits for the server response, then DOMContentLoaded, network idle and stable text; scrolls `PLAYWRIGHT_SCROLL_STEPS` times for lazy/infinite content; waits up to `PLAYWRIGHT_CONTENT_WAIT_MS` when the page is still an empty app shell; and keeps the DOM built so far if `PLAYWRIGHT_TIMEOUT_MS` is exceeded. Images are not downloaded (their `src`/`alt` metadata is still extracted).
+
+### Extraction
+
+Each page is read as ordered text blocks (headings, paragraphs, list items, table rows, and text inside `div`/`span` components), so it works for article markup and for card/component layouts. From the blocks the extractor builds:
+
+- title, description, canonical URL, language, OpenGraph and Twitter metadata
+- headings and sections (text grouped under the nearest h1-h4)
+- paragraphs, lists, tables (empty cells keep column alignment), FAQs
+- links (used for crawling), contacts from `mailto:`/`tel:`/WhatsApp links
+- image metadata, JSON-LD structured data
+- `navigation`: menu labels removed from the content (kept once in `site_wide`)
+- quality: content length, `core_text_length`, `main_text_coverage` (Trafilatura cross-check), content hash and SimHash
+
+Overlays, cookie bars and ads are removed by whole class/id tokens and ARIA dialog roles; `body`, `main`, `article` and large wrappers are never removed.
+
+Linked `.pdf` and `.docx` files (up to `CRAWLER_MAX_DOCUMENTS`) become `document` pages. Scanned PDFs without a text layer are reported; OCR is not enabled.
 
 Image handling stores metadata only. It does not download image binaries, run OCR, or generate image captions.
 
@@ -363,6 +398,17 @@ The v2 JSON shape contains:
 - `secondary_content.searches` when web search supplements are used
 
 Old JSON files are handled defensively by compatibility helpers.
+
+Each crawl also writes, next to the knowledge JSON:
+
+```text
+backend/knowledge_files/exports/<knowledge-file-name>/
+  pages.jsonl          one JSON object per page (page record + Markdown)
+  pages/NNN-slug.md    one Markdown file per page, front matter with source_url
+  crawl_report.json    full crawl report (skipped/failed URLs, timings, settings)
+```
+
+Disable with `KNOWLEDGE_EXPORT_ENABLED=false`.
 
 ## Chunking
 
@@ -576,11 +622,25 @@ See `evaluation/README.md` and `evaluation/manual_review_template.md` for the fu
 
 ## Testing
 
-Run backend tests:
+Run backend tests (no internet, OpenAI key or browser needed; the crawler is tested against a local test site):
 
 ```bash
 python3 -m pytest
 ```
+
+GitHub Actions (`.github/workflows/ci.yml`) runs the backend tests and the frontend build on every push to `main` and every pull request.
+
+### Scrape benchmark
+
+`evaluation/scrape_benchmark/sites.json` lists public sites of different kinds (static, JavaScript-rendered, infinite scroll, delayed rendering, tables, WordPress, Shopify, documentation) with *golden facts* known to be on each site. The benchmark crawls each site and reports how many facts reached the extracted knowledge:
+
+```bash
+python3 scripts/run_scrape_benchmark.py --output-prefix current
+python3 scripts/run_scrape_benchmark.py --only quotes_javascript,hockey_tables
+python3 scripts/run_scrape_benchmark.py --repo ../other-checkout --output-prefix other
+```
+
+Results go to `evaluation/scrape_benchmark/results/<prefix>.md` and `.json`.
 
 Run frontend build:
 
@@ -660,6 +720,10 @@ Make sure `.env` exists and contains:
 OPENAI_API_KEY=...
 ```
 
+### Settings in `.env` win over shell variables
+
+`scrape_pipeline.py` calls `load_dotenv(override=True)`, so a value in `.env` overrides the same variable exported in your shell. Change `.env` (or remove the line) to change a setting.
+
 ### Playwright rendering fails
 
 Install Chromium:
@@ -730,7 +794,9 @@ The project ignores generated runtime files. Do not commit:
 
 - Public websites only.
 - No login, CAPTCHA bypass, private dashboards, or paid content scraping.
-- No OCR or AI image captioning; image handling stores metadata only.
+- No OCR or AI image captioning; image handling stores metadata only; scanned PDFs yield no text.
+- Content that appears only after clicks (e.g. "load more" buttons, tabs that fetch on click) is not triggered; scrolling-based loading is.
+- Web-search gap filling (OpenAI Agents) is off by default (`ENABLE_WEB_SEARCH_SUPPLEMENT=false`) because it adds content that is not from the website.
 - No external reranking API; reranking is deterministic and local.
 - Chat still keeps a legacy `system_prompt` fallback during migration.
 - `/api/jobs/run` is synchronous and intended for development, not production queueing.

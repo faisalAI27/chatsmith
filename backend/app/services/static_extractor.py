@@ -15,6 +15,7 @@ from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 from bs4.element import CData, Comment, Declaration, Doctype, NavigableString, ProcessingInstruction, Tag
 
+from .main_content import compare_with_main_text
 from .scraper_schema import create_page_record, create_quality_record
 from .text_fingerprint import content_hash, simhash_hex
 
@@ -1041,6 +1042,15 @@ def calculate_page_quality(
     )
 
 
+def _trafilatura_check_enabled() -> bool:
+    try:
+        from ..core.config import get_settings
+
+        return bool(getattr(get_settings(), "extractor_trafilatura_check", True))
+    except Exception:
+        return True
+
+
 def extract_static_page(
     html: str,
     page_url: str = "",
@@ -1079,6 +1089,20 @@ def extract_static_page(
     main_root = _find_main_root(soup)
     blocks = collect_blocks(body, main_root=main_root)
 
+    # Trafilatura cross-check: measure coverage of the page's main text and
+    # restore any main-text paragraph the structural pass dropped.
+    main_text_coverage = None
+    recovered = 0
+    if _trafilatura_check_enabled():
+        main_text_coverage, missing = compare_with_main_text(html, page_url, build_content_from_blocks(blocks))
+        if missing:
+            blocks.append({"text": "Additional page text", "tag": "h2", "level": 2, "chrome": False, "in_main": True, "group": 0})
+            blocks.extend(
+                {"text": text, "tag": "p", "level": 0, "chrome": False, "in_main": True, "group": 0}
+                for text in missing
+            )
+            recovered = len(missing)
+
     headings = extract_headings(soup)
     paragraphs = extract_paragraphs(soup)
     lists = extract_lists(soup)
@@ -1101,6 +1125,9 @@ def extract_static_page(
     quality["content_hash"] = content_hash(core_text)
     quality["simhash"] = simhash_hex(core_text)
     quality["block_count"] = len(blocks)
+    if main_text_coverage is not None:
+        quality["main_text_coverage"] = main_text_coverage
+        quality["main_text_recovered_paragraphs"] = recovered
     if requires_javascript:
         quality["requires_javascript"] = True
     if quality_extra:
