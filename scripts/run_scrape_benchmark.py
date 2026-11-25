@@ -9,6 +9,7 @@ numbers we can compare across versions:
     python3 scripts/run_scrape_benchmark.py --output-prefix current
     python3 scripts/run_scrape_benchmark.py --repo /path/to/old/checkout --output-prefix legacy
     python3 scripts/run_scrape_benchmark.py --only quotes_javascript,hockey_tables
+    python3 scripts/run_scrape_benchmark.py --baseline evaluation/scrape_benchmark/results/legacy_main.json
 
 Outputs <prefix>.json (full detail) and <prefix>.md (summary table) in
 evaluation/scrape_benchmark/results/. No OpenAI key is needed: only the
@@ -102,6 +103,35 @@ async def run_site(scraper, site: dict) -> dict:
     }
 
 
+def comparison_markdown(rows: list[dict], baseline: list[dict], baseline_label: str) -> str:
+    by_name = {row["name"]: row for row in baseline}
+    lines = [
+        f"## Compared with {baseline_label}",
+        "",
+        "| Site | Pages (before → after) | Fact recall (before → after) | Time s (before → after) |",
+        "| --- | ---: | ---: | ---: |",
+    ]
+    before_found = before_total = after_found = after_total = 0
+    for row in rows:
+        old = by_name.get(row["name"])
+        if old is None:
+            continue
+        before_found += old["facts_found"]
+        before_total += old["facts_total"]
+        after_found += row["facts_found"]
+        after_total += row["facts_total"]
+        lines.append(
+            f"| {row['name']} | {old['pages']} → {row['pages']} | "
+            f"{old['facts_found']}/{old['facts_total']} → {row['facts_found']}/{row['facts_total']} | "
+            f"{old['duration_seconds']} → {row['duration_seconds']} |"
+        )
+    lines.append(
+        f"| **Total** | | **{before_found}/{before_total} ({before_found / max(1, before_total):.0%}) → "
+        f"{after_found}/{after_total} ({after_found / max(1, after_total):.0%})** | |"
+    )
+    return "\n".join(lines) + "\n"
+
+
 def to_markdown(label: str, rows: list[dict]) -> str:
     total_found = sum(row["facts_found"] for row in rows)
     total_facts = sum(row["facts_total"] for row in rows)
@@ -134,6 +164,7 @@ async def main() -> None:
     parser.add_argument("--only", default="", help="comma-separated site names")
     parser.add_argument("--output-prefix", default="current")
     parser.add_argument("--results-dir", type=Path, default=DEFAULT_RESULTS)
+    parser.add_argument("--baseline", type=Path, help="earlier results .json to compare against")
     args = parser.parse_args()
 
     sites = json.loads(args.sites.read_text(encoding="utf-8"))["sites"]
@@ -152,8 +183,12 @@ async def main() -> None:
     args.results_dir.mkdir(parents=True, exist_ok=True)
     label = f"{args.output_prefix} ({args.repo.resolve().name})"
     (args.results_dir / f"{args.output_prefix}.json").write_text(json.dumps(rows, indent=2, ensure_ascii=False), encoding="utf-8")
-    (args.results_dir / f"{args.output_prefix}.md").write_text(to_markdown(label, rows), encoding="utf-8")
-    print("\n" + to_markdown(label, rows))
+    markdown = to_markdown(label, rows)
+    if args.baseline and args.baseline.exists():
+        baseline = json.loads(args.baseline.read_text(encoding="utf-8"))
+        markdown += "\n" + comparison_markdown(rows, baseline, args.baseline.stem)
+    (args.results_dir / f"{args.output_prefix}.md").write_text(markdown, encoding="utf-8")
+    print("\n" + markdown)
 
 
 if __name__ == "__main__":

@@ -5,6 +5,10 @@ import pytest_asyncio
 from aiohttp import web
 
 from backend.app.core.config import get_settings
+# Imported at module level: scrape_pipeline loads .env with override=True on
+# import, which must happen before the fixture below forces static mode.
+from backend.app.services import scrape_pipeline as sp
+from backend.app.services.chunker import build_chunks_from_knowledge
 from backend.app.services.crawler import CrawlConfig, SiteCrawler, detect_crawl_scope, is_public_host
 from backend.app.services.page_fetcher import extract_page_with_render_mode
 from tests.helpers import make_pdf
@@ -184,3 +188,35 @@ async def test_private_hosts_are_refused_by_default():
     result = await SiteCrawler("http://127.0.0.1:9", extract_fn=_extract, config=CrawlConfig()).run()
     assert result["success"] is False
     assert result["crawl_report"]["skipped"]["private_host"] == 1
+
+
+@pytest.mark.asyncio
+async def test_crawl_to_knowledge_json_exports_and_chunks(site, tmp_path, monkeypatch):
+    import json
+
+    monkeypatch.setattr(sp, "KNOWLEDGE_DIR", tmp_path)
+    scraped = await SiteCrawler(site, extract_fn=_extract, config=_config()).run()
+    knowledge = sp.create_knowledge_json(site, scraped, [], sp.derive_site_name(scraped))
+    path = sp.save_knowledge_json(knowledge, site)
+    stats = {}
+    sp._export_knowledge_best_effort(scraped, knowledge, path, stats)
+
+    saved_text = open(path, encoding="utf-8").read()
+    saved = json.loads(saved_text)
+    assert not any(key.startswith("_") for page in saved["pages"] for key in page)
+    assert '"_blocks"' not in saved_text and '"_markdown"' not in saved_text
+    assert saved["metadata"]["name"] == "Test Store"  # repeated title segment, no LLM call
+    assert saved["metadata"]["crawl"]["pages_stored"] == scraped["crawl_report"]["pages_stored"]
+    assert {page["page_type"] for page in saved["pages"]} >= {"homepage", "document", "site_wide"}
+
+    exports = stats["knowledge_exports"]
+    assert exports["markdown_pages"] == len(scraped["pages"])
+    first_line = json.loads(open(exports["jsonl_path"], encoding="utf-8").readline())
+    assert first_line["markdown"].startswith("---")
+
+    chunks = build_chunks_from_knowledge(saved)
+    chunk_text = "\n".join(chunk["text"] for chunk in chunks)
+    assert "Helpline 0311-1115262" in chunk_text  # kept once via site_wide
+    helpline_chunks = [chunk for chunk in chunks if "Helpline 0311-1115262" in chunk["text"]]
+    assert helpline_chunks and all(chunk["page_type"] == "site_wide" for chunk in helpline_chunks)
+    assert "Waist 30 fits 76 cm." in chunk_text  # from the linked PDF
