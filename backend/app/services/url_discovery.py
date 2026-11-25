@@ -1,3 +1,4 @@
+import gzip
 import re
 import xml.etree.ElementTree as ET
 from collections import deque
@@ -6,6 +7,8 @@ from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse, un
 
 import aiohttp
 from bs4 import BeautifulSoup
+
+from .scraper_schema import TRACKING_QUERY_KEYS, is_tracking_query_key  # noqa: F401  (re-exported)
 
 
 HIGH_PRIORITY_KEYWORDS = {
@@ -61,10 +64,14 @@ SKIP_PATH_KEYWORDS = {
     "cart",
     "checkout",
     "login",
+    "logout",
+    "myaccount",
     "password",
     "register",
     "signin",
+    "signout",
     "signup",
+    "wishlist",
 }
 SPECIFIC_PAGE_UTILITY_SEGMENTS = {
     "about",
@@ -152,20 +159,16 @@ DOWNLOAD_EXTENSIONS = {
     ".xlsx",
     ".zip",
 }
-TRACKING_QUERY_KEYS = {
-    "fbclid",
-    "gclid",
-    "mc_cid",
-    "mc_eid",
-    "msclkid",
-}
+
 COMMON_SITEMAP_PATHS = (
     "/sitemap.xml",
     "/sitemap_index.xml",
     "/sitemap-index.xml",
 )
-MAX_SITEMAP_FILES = 5
-MAX_SITEMAP_URLS = 100
+MAX_SITEMAP_FILES = 10
+MAX_SITEMAP_URLS = 500
+DOCUMENT_LINK_EXTENSIONS = {".pdf", ".docx"}
+INDEX_FILENAMES = {"index.html", "index.htm", "index.php", "default.aspx", "default.asp", "index.asp"}
 
 
 def _canonical_domain(netloc: str) -> str:
@@ -181,7 +184,27 @@ def _canonical_domain(netloc: str) -> str:
 
 def _path_tokens(url: str) -> List[str]:
     parsed = urlparse(url)
-    return [token for token in re.split(r"[/_-]+", parsed.path.lower()) if token]
+    return [token for token in re.split(r"[^a-z0-9]+", unquote(parsed.path).lower()) if token]
+
+
+def _keyword_tokens(keyword: str) -> List[str]:
+    return [token for token in re.split(r"[^a-z0-9]+", keyword.lower()) if token]
+
+
+def _contains_token_sequence(tokens: List[str], sequence: List[str], allow_prefix: bool) -> bool:
+    """True if ``sequence`` appears as consecutive whole tokens (or a token prefix)."""
+    if not sequence:
+        return False
+    size = len(sequence)
+    for start in range(len(tokens) - size + 1):
+        window = tokens[start:start + size]
+        if window == sequence:
+            return True
+        if allow_prefix and size == 1 and window[0].startswith(sequence[0]) and len(sequence[0]) >= 4:
+            return True
+    # "aboutus" / "casestudies" style compact paths
+    compact = "".join(sequence)
+    return size > 1 and compact in tokens
 
 
 def _path_segments(path: str) -> List[str]:
@@ -189,14 +212,19 @@ def _path_segments(path: str) -> List[str]:
 
 
 def _has_any_keyword(url: str, keywords: Iterable[str]) -> bool:
-    path_text = re.sub(r"[/_-]+", " ", urlparse(url).path.lower())
-    compact_path = re.sub(r"[^a-z0-9]+", "", path_text)
-    for keyword in keywords:
-        keyword_text = re.sub(r"[-_]+", " ", keyword.lower())
-        compact_keyword = re.sub(r"[^a-z0-9]+", "", keyword_text)
-        if keyword_text in path_text or compact_keyword in compact_path:
-            return True
-    return False
+    """Match keywords against whole path tokens.
+
+    The old substring match ranked "/heritage" as a low-value "tag" page and
+    "/steam-club" as a "team" page.
+    """
+    tokens = _path_tokens(url)
+    return any(_contains_token_sequence(tokens, _keyword_tokens(keyword), allow_prefix=True) for keyword in keywords)
+
+
+def _has_skip_keyword(url: str) -> bool:
+    """Exact token match for account/cart/login pages ("/accounting" is fine)."""
+    tokens = set(_path_tokens(url))
+    return bool(tokens & SKIP_PATH_KEYWORDS) or {"sign", "in"} <= tokens or {"log", "in"} <= tokens
 
 
 def _query_keys(query: str) -> set[str]:
@@ -278,8 +306,7 @@ def normalize_discovered_url(url: str) -> str:
 
     query_items = []
     for key, value in parse_qsl(parsed.query, keep_blank_values=True):
-        key_lower = key.lower()
-        if key_lower.startswith("utm_") or key_lower in TRACKING_QUERY_KEYS:
+        if is_tracking_query_key(key):
             continue
         query_items.append((key, value))
     query = urlencode(sorted(query_items), doseq=True)
@@ -287,18 +314,52 @@ def normalize_discovered_url(url: str) -> str:
     return urlunparse((scheme, netloc, path, "", query, ""))
 
 
-def is_valid_crawl_url(url: str, base_domain: str) -> bool:
+def url_key(url: str) -> str:
+    """Identity used for crawl de-duplication.
+
+    Treats http/https, "www." and trailing index files (``/index.html``) as the
+    same page, on top of ``normalize_discovered_url``.
+    """
+    normalized = normalize_discovered_url(url)
+    if not normalized:
+        return ""
+    parsed = urlparse(normalized)
+    path = parsed.path
+    last_segment = path.rsplit("/", 1)[-1].lower()
+    if last_segment in INDEX_FILENAMES:
+        path = path[: -len(last_segment)].rstrip("/")
+    return urlunparse(("https", _canonical_domain(parsed.netloc), path, "", parsed.query, ""))
+
+
+def is_document_url(url: str) -> bool:
+    path = urlparse(url).path.lower()
+    return any(path.endswith(extension) for extension in DOCUMENT_LINK_EXTENSIONS)
+
+
+def is_valid_crawl_url(
+    url: str,
+    base_domain: str,
+    allow_documents: bool = False,
+    include_subdomains: bool = False,
+    max_path_depth: int = 4,
+) -> bool:
     """Return True when a URL is useful and safe enough for same-site crawling."""
     parsed = urlparse(url)
     if parsed.scheme not in {"http", "https"}:
         return False
-    if _canonical_domain(parsed.netloc) != _canonical_domain(base_domain):
+    candidate_domain = _canonical_domain(parsed.netloc)
+    site_domain = _canonical_domain(base_domain)
+    if candidate_domain != site_domain and not (
+        include_subdomains and candidate_domain.endswith("." + site_domain)
+    ):
         return False
 
     path_lower = parsed.path.lower()
+    if allow_documents and is_document_url(url):
+        return not _has_skip_keyword(url)
     if any(path_lower.endswith(ext) for ext in DOWNLOAD_EXTENSIONS):
         return False
-    if any(keyword in path_lower for keyword in SKIP_PATH_KEYWORDS):
+    if _has_skip_keyword(url):
         return False
     if _is_search_result_path(parsed) or _has_search_query(parsed):
         return False
@@ -311,7 +372,7 @@ def is_valid_crawl_url(url: str, base_domain: str) -> bool:
     is_priority = _has_any_keyword(url, HIGH_PRIORITY_KEYWORDS | MEDIUM_PRIORITY_KEYWORDS)
     if len(query_items) > 2 and not is_priority:
         return False
-    if depth > 4 and not is_priority:
+    if depth > max_path_depth and not is_priority:
         return False
 
     return True
@@ -530,7 +591,10 @@ async def fetch_sitemap_urls(
             ) as response:
                 if response.status != 200:
                     continue
-                parsed_xml = parse_sitemap_xml(await response.text())
+                raw = await response.read()
+                if raw[:2] == b"\x1f\x8b":  # gzip-compressed sitemap (.xml.gz)
+                    raw = gzip.decompress(raw)
+                parsed_xml = parse_sitemap_xml(raw.decode("utf-8", errors="replace"))
         except Exception:
             continue
 

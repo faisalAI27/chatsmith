@@ -17,7 +17,7 @@ async def run_job(body: JobCreate) -> JobStatus:
     """
     try:
         status_text, system_prompt, name, history, msg_update, send_update, stats = await scrape_pipeline.run_full_research_new(
-            str(body.url), force_refresh=body.force_refresh
+            str(body.url), force_refresh=body.force_refresh, max_pages=body.max_pages
         )
         stats_out: Dict[str, Any] = {
             "status_text": status_text,
@@ -36,6 +36,9 @@ async def run_job(body: JobCreate) -> JobStatus:
             "vector_indexed",
             "vector_indexing_summary",
             "vector_indexing_warning",
+            "crawl_report",
+            "knowledge_exports",
+            "web_search_enabled",
         ):
             if key in stats:
                 stats_out[key] = stats[key]

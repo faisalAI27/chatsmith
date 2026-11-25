@@ -5,13 +5,45 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 
+# Click/campaign identifiers that never change page content. Keeping them in
+# the cache key gave every ad click its own website_id.
 TRACKING_QUERY_KEYS = {
+    "_branch_match_id",
+    "_ga",
+    "_gl",
+    "_hsenc",
+    "_hsmi",
+    "dclid",
+    "ef_id",
     "fbclid",
+    "gad_campaignid",
+    "gad_source",
+    "gbraid",
     "gclid",
+    "gclsrc",
+    "hsctatracking",
+    "igshid",
+    "li_fat_id",
     "mc_cid",
     "mc_eid",
+    "mkt_tok",
     "msclkid",
+    "oly_anon_id",
+    "oly_enc_id",
+    "rb_clickid",
+    "s_kwcid",
+    "srsltid",
+    "ttclid",
+    "twclid",
+    "vero_id",
+    "wbraid",
+    "yclid",
 }
+
+
+def is_tracking_query_key(key: str) -> bool:
+    key_lower = (key or "").lower()
+    return key_lower.startswith(("utm_", "pk_", "mtm_")) or key_lower in TRACKING_QUERY_KEYS
 
 
 def normalize_url_for_cache(url: str) -> str:
@@ -42,8 +74,7 @@ def normalize_url_for_cache(url: str) -> str:
 
     query_items = []
     for key, value in parse_qsl(parsed.query, keep_blank_values=True):
-        key_lower = key.lower()
-        if key_lower.startswith("utm_") or key_lower in TRACKING_QUERY_KEYS:
+        if is_tracking_query_key(key):
             continue
         query_items.append((key, value))
     query = urlencode(sorted(query_items), doseq=True)

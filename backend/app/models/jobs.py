@@ -1,10 +1,12 @@
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl
 from typing import Optional, Any, List
 
 
 class JobCreate(BaseModel):
     url: HttpUrl
     force_refresh: bool = False
+    # Optional crawl budget for this job; defaults to CRAWLER_MAX_PAGES.
+    max_pages: Optional[int] = Field(default=None, ge=1, le=2000)
 
 
 class JobStatus(BaseModel):

@@ -19,6 +19,7 @@ from openai import OpenAI
 from pydantic import BaseModel, Field
 from agents import Agent, WebSearchTool, Runner
 from agents.model_settings import ModelSettings
+from ..core.config import get_settings
 from .metrics_logger import log_chat_answer
 from .browser_renderer import (
     get_scraper_render_mode,
@@ -31,6 +32,9 @@ from .scraper_schema import (
     make_website_id,
     normalize_url_for_cache,
 )
+from . import page_fetcher
+from .crawler import CrawlConfig, crawl_website
+from .knowledge_export import export_crawl_outputs
 from .static_extractor import extract_static_page
 from .url_discovery import (
     classify_page_type,
@@ -111,154 +115,24 @@ SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 print("✅ Imports loaded")
 
 # ============================================================
-# SMART WEBSITE SCRAPER - PRIMARY SOURCE (Phase 3 Enhanced)
+# WEBSITE CRAWLER + SCRAPER - PRIMARY SOURCE
 # ============================================================
+# Fetching lives in page_fetcher.py, crawling in crawler.py, extraction in
+# static_extractor.py / document_extractor.py. The names below are kept as
+# thin wrappers so existing callers and tests keep working.
 
+# Legacy constant: the old scraper stopped at 10 pages. The crawler budget now
+# comes from CRAWLER_MAX_PAGES (default 100) or the job's max_pages.
 MAX_PAGES_TO_SCRAPE = 10
-REQUEST_TIMEOUT = 15
-MAX_RETRIES = 3
-RETRY_DELAY = 1.0  # seconds between retries
-POLITE_DELAY = 0.5  # seconds between requests (rate limiting)
-USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/123.0.0.0 Safari/537.36"
-)
-
-# Cache for robots.txt to avoid re-fetching
-_robots_cache: Dict[str, set] = {}
-_robots_text_cache: Dict[str, str] = {}
+REQUEST_TIMEOUT = page_fetcher.REQUEST_TIMEOUT
+MAX_RETRIES = page_fetcher.MAX_RETRIES
+RETRY_DELAY = page_fetcher.RETRY_DELAY
+USER_AGENT = page_fetcher.USER_AGENT
+fetch_page_with_retry = page_fetcher.fetch_page_with_retry
+_render_quality_extra = page_fetcher._render_quality_extra
+_add_page_quality_error = page_fetcher._add_page_quality_error
 
 
-async def check_robots_txt(session: aiohttp.ClientSession, base_url: str) -> set:
-    """
-    Fetch and parse robots.txt to get disallowed paths.
-    Returns a set of disallowed path prefixes for our user agent.
-    """
-    parsed = urlparse(base_url)
-    robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
-    
-    # Check cache first
-    if parsed.netloc in _robots_cache:
-        return _robots_cache[parsed.netloc]
-    
-    disallowed = set()
-    robots_text = ""
-    try:
-        headers = {"User-Agent": USER_AGENT}
-        async with session.get(robots_url, headers=headers, timeout=aiohttp.ClientTimeout(total=5)) as response:
-            if response.status == 200:
-                robots_text = await response.text()
-                
-                # Simple robots.txt parser - look for Disallow rules
-                current_agent = None
-                for line in robots_text.split('\n'):
-                    line = line.strip().lower()
-                    if line.startswith('user-agent:'):
-                        agent = line.split(':', 1)[1].strip()
-                        current_agent = agent
-                    elif line.startswith('disallow:') and current_agent in ['*', 'chatsmith']:
-                        path = line.split(':', 1)[1].strip()
-                        if path:
-                            disallowed.add(path)
-                
-                print(f"  🤖 robots.txt: {len(disallowed)} disallowed paths")
-    except Exception as e:
-        print(f"  ⚠️ Could not fetch robots.txt: {str(e)[:50]}")
-    
-    # Cache the result
-    _robots_cache[parsed.netloc] = disallowed
-    _robots_text_cache[parsed.netloc] = robots_text
-    return disallowed
-
-
-def get_cached_robots_text(base_url: str) -> str:
-    """Return cached robots.txt text for sitemap discovery."""
-    return _robots_text_cache.get(urlparse(base_url).netloc, "")
-
-
-def is_path_allowed(url: str, disallowed_paths: set) -> bool:
-    """Check if a URL path is allowed based on robots.txt rules."""
-    if not disallowed_paths:
-        return True
-    
-    parsed = urlparse(url)
-    path = parsed.path.lower()
-    
-    for disallowed in disallowed_paths:
-        if path.startswith(disallowed):
-            return False
-    return True
-
-
-async def fetch_page_with_retry(session: aiohttp.ClientSession, url: str, 
-                                 retries: int = MAX_RETRIES) -> Tuple[str, str, str]:
-    """
-    Fetch a single page with retry logic.
-    Returns (url, html_content, error_message).
-    """
-    last_error = ""
-    
-    for attempt in range(retries):
-        try:
-            headers = {"User-Agent": USER_AGENT}
-            async with session.get(url, headers=headers, 
-                                   timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT),
-                                   allow_redirects=True) as response:
-                
-                # Handle different status codes
-                if response.status == 200:
-                    html = await response.text()
-                    return url, html, ""
-                
-                elif response.status == 429:  # Rate limited
-                    wait_time = int(response.headers.get('Retry-After', 5))
-                    print(f"  ⏳ Rate limited, waiting {wait_time}s...")
-                    await asyncio.sleep(wait_time)
-                    last_error = "rate_limited"
-                    continue
-                
-                elif response.status in [403, 401]:  # Forbidden/Unauthorized
-                    last_error = f"access_denied_{response.status}"
-                    break  # Don't retry auth errors
-                
-                elif response.status == 404:
-                    last_error = "not_found"
-                    break  # Don't retry 404s
-                
-                elif response.status >= 500:  # Server errors - retry
-                    last_error = f"server_error_{response.status}"
-                    if attempt < retries - 1:
-                        await asyncio.sleep(RETRY_DELAY * (attempt + 1))
-                        continue
-                
-                else:
-                    last_error = f"http_{response.status}"
-                    break
-                    
-        except asyncio.TimeoutError:
-            last_error = "timeout"
-            if attempt < retries - 1:
-                print(f"  ⏱️ Timeout for {url[:50]}..., retrying ({attempt + 1}/{retries})")
-                await asyncio.sleep(RETRY_DELAY)
-                continue
-                
-        except aiohttp.ClientError as e:
-            last_error = f"client_error: {str(e)[:50]}"
-            if attempt < retries - 1:
-                await asyncio.sleep(RETRY_DELAY)
-                continue
-                
-        except Exception as e:
-            last_error = f"error: {str(e)[:50]}"
-            break
-    
-    if last_error:
-        print(f"  ❌ Failed {url[:50]}...: {last_error}")
-    return url, "", last_error
-
-
-# Keep the old function name for compatibility
 async def fetch_page(session: aiohttp.ClientSession, url: str) -> Tuple[str, str]:
     """Fetch a single page and return (url, html_content) - wrapper for compatibility"""
     url, html, _ = await fetch_page_with_retry(session, url)
@@ -289,40 +163,18 @@ def clean_html_content(
     )
 
 
-def _render_quality_extra(render_result: Dict) -> Dict:
-    quality_extra = {"render_time_ms": int(render_result.get("render_time_ms") or 0)}
-    final_url = render_result.get("final_url")
-    if final_url:
-        quality_extra["final_url"] = final_url
-    return quality_extra
-
-
-def _add_page_quality_error(page_data: Dict, error_message: str) -> None:
-    quality = page_data.setdefault("quality", {})
-    errors = quality.setdefault("errors", [])
-    if not isinstance(errors, list):
-        errors = [str(errors)]
-        quality["errors"] = errors
-    if error_message:
-        errors.append(error_message)
-
-
 async def fetch_static_html_with_fallback(
     session: aiohttp.ClientSession,
     page_url: str,
     allow_http_fallback: bool = False,
 ) -> Tuple[str, str, str]:
     """Fetch static HTML, optionally falling back from HTTPS to HTTP for the homepage."""
-    _, html, error = await fetch_page_with_retry(session, page_url)
-    effective_url = page_url
-
-    if allow_http_fallback and not html and page_url.startswith("https://"):
-        fallback_url = "http://" + page_url[len("https://"):]
-        print(f"  🔁 HTTPS fetch failed, retrying with HTTP: {fallback_url}")
-        _, html, error = await fetch_page_with_retry(session, fallback_url)
-        if html:
-            effective_url = fallback_url.rstrip("/")
-
+    effective_url, html, error, _ = await page_fetcher.fetch_static_html_with_fallback(
+        session,
+        page_url,
+        allow_http_fallback=allow_http_fallback,
+        fetch_fn=fetch_page_with_retry,
+    )
     return effective_url, html, error
 
 
@@ -336,116 +188,17 @@ async def extract_page_with_render_mode(
     Extract one page according to SCRAPER_RENDER_MODE.
 
     Returns (page_record, html_used_for_discovery, effective_url, error_message).
-    Unit tests monkeypatch the fetch/render functions so normal pytest does not
-    require installed browser binaries.
+    The fetch/render functions are looked up on this module at call time so
+    unit tests can monkeypatch them without a network or browser.
     """
-    render_mode = get_scraper_render_mode()
-
-    if render_mode == "browser":
-        render_result = await render_page_with_playwright(page_url)
-        if render_result.get("success"):
-            effective_url = render_result.get("final_url") or page_url
-            html = render_result.get("html", "")
-            return (
-                clean_html_content(
-                    html,
-                    page_url=effective_url,
-                    page_type=page_type,
-                    extraction_method="playwright",
-                    quality_extra=_render_quality_extra(render_result),
-                ),
-                html,
-                effective_url,
-                "",
-            )
-
-        render_error = render_result.get("error", "Playwright render failed")
-        effective_url, static_html, static_error = await fetch_static_html_with_fallback(
-            session,
-            page_url,
-            allow_http_fallback=allow_http_fallback,
-        )
-        if static_html:
-            return (
-                clean_html_content(
-                    static_html,
-                    page_url=effective_url,
-                    page_type=page_type,
-                    errors=[render_error],
-                    extraction_method="static_after_playwright_failed",
-                    quality_extra=_render_quality_extra(render_result),
-                ),
-                static_html,
-                effective_url,
-                "",
-            )
-        return (
-            None,
-            "",
-            effective_url,
-            f"{render_error}; static fallback failed: {static_error}",
-        )
-
-    effective_url, static_html, static_error = await fetch_static_html_with_fallback(
+    return await page_fetcher.extract_page_with_render_mode(
         session,
         page_url,
-        allow_http_fallback=allow_http_fallback,
-    )
-
-    if not static_html:
-        if render_mode == "auto":
-            render_result = await render_page_with_playwright(page_url)
-            if render_result.get("success"):
-                effective_url = render_result.get("final_url") or page_url
-                html = render_result.get("html", "")
-                return (
-                    clean_html_content(
-                        html,
-                        page_url=effective_url,
-                        page_type=page_type,
-                        extraction_method="playwright",
-                        quality_extra=_render_quality_extra(render_result),
-                    ),
-                    html,
-                    effective_url,
-                    "",
-                )
-            render_error = render_result.get("error", "Playwright render failed")
-            return None, "", effective_url, f"Static fetch failed: {static_error}; {render_error}"
-        return None, "", effective_url, static_error
-
-    static_page = clean_html_content(
-        static_html,
-        page_url=effective_url,
         page_type=page_type,
-        extraction_method="static",
+        allow_http_fallback=allow_http_fallback,
+        fetch_fn=fetch_page_with_retry,
+        render_fn=render_page_with_playwright,
     )
-
-    if render_mode == "static" or not should_render_with_browser(static_page, static_html):
-        return static_page, static_html, effective_url, ""
-
-    render_result = await render_page_with_playwright(effective_url)
-    if render_result.get("success"):
-        rendered_url = render_result.get("final_url") or effective_url
-        rendered_html = render_result.get("html", "")
-        return (
-            clean_html_content(
-                rendered_html,
-                page_url=rendered_url,
-                page_type=page_type,
-                extraction_method="playwright",
-                quality_extra=_render_quality_extra(render_result),
-            ),
-            rendered_html,
-            rendered_url,
-            "",
-        )
-
-    render_error = render_result.get("error", "Playwright render failed")
-    static_page["extraction_method"] = "static_with_playwright_failed"
-    static_page["quality"].update(_render_quality_extra(render_result))
-    _add_page_quality_error(static_page, render_error)
-    return static_page, static_html, effective_url, ""
 
 
 def discover_key_pages(html: str, base_url: str) -> List[str]:
@@ -460,141 +213,26 @@ def discover_key_pages(html: str, base_url: str) -> List[str]:
     )
 
 
-async def scrape_website(url: str) -> Dict:
-    """
-    Main scraping function - scrapes homepage and discovers/scrapes key pages.
-    Returns structured data for the entire website.
-    Now with: retry logic, robots.txt respect, rate limiting, better error handling.
-    Uses SSL context for Windows compatibility (matches notebook).
-    """
-    print(f"🌐 Starting smart scrape of: {url}")
-    render_mode = get_scraper_render_mode()
-    print(f"  🧭 Render mode: {render_mode}")
-    
-    # Normalize URL
-    if not url.startswith(('http://', 'https://')):
-        url = 'https://' + url
-    url = url.rstrip('/')
-    crawl_intent = classify_crawl_intent(url)
-    print(f"  🎯 Crawl intent: {crawl_intent}")
-    
-    results = {
-        "source_url": url,
-        "scraped_at": datetime.now().isoformat(),
-        "pages": [],
-        "total_pages": 0,
-        "success": False,
-        "errors": []  # Track errors for UI feedback
-    }
-    
-    connector = aiohttp.TCPConnector(ssl=SSL_CONTEXT)
-    async with aiohttp.ClientSession(connector=connector) as session:
-        # Step 0: Check robots.txt (be polite!)
-        print("  🤖 Checking robots.txt...")
-        disallowed_paths = await check_robots_txt(session, url)
-        
-        # Step 1: Fetch/extract homepage with selected render mode
-        print("  📄 Fetching homepage...")
-        homepage_data, homepage_html, effective_homepage_url, homepage_error = await extract_page_with_render_mode(
-            session,
-            url,
-            page_type="homepage" if crawl_intent == "homepage_site_crawl" else classify_page_type(url),
-            allow_http_fallback=True,
-        )
-        if effective_homepage_url != url:
-            url = effective_homepage_url.rstrip("/")
-            results["source_url"] = url
-            crawl_intent = classify_crawl_intent(url)
+async def _crawler_extract(session, page_url: str, page_type: str = "other", allow_http_fallback: bool = False):
+    return await extract_page_with_render_mode(
+        session,
+        page_url,
+        page_type=page_type,
+        allow_http_fallback=allow_http_fallback,
+    )
 
-        if not homepage_data or not homepage_html:
-            error_msg = f"Failed to fetch homepage: {homepage_error}"
-            print(f"  ❌ {error_msg}")
-            results["errors"].append(error_msg)
-            return results
-        
-        # Step 2: Store homepage content
-        results["pages"].append(homepage_data)
-        print(f"  ✅ Homepage: {homepage_data['title'][:50] if homepage_data['title'] else 'No title'}")
-        
-        # Step 3: Discover key pages
-        print("  🔍 Discovering key pages...")
-        homepage_links = extract_homepage_links(homepage_html, url)
-        robots_text = get_cached_robots_text(url)
-        sitemap_urls = await fetch_sitemap_urls(
-            session,
-            url,
-            robots_text=robots_text,
-            headers={"User-Agent": USER_AGENT},
-        )
-        print(f"  🔗 Homepage links found: {len(homepage_links)}")
-        print(f"  🗺️ Sitemap URLs found: {len(sitemap_urls)}")
-        max_candidates = MAX_PAGES_TO_SCRAPE
-        if crawl_intent == "homepage_site_crawl":
-            max_candidates = MAX_PAGES_TO_SCRAPE - 1
-        else:
-            max_candidates = min(MAX_PAGES_TO_SCRAPE, 5)
-        discovery_stats = discover_candidate_urls_with_stats(
-            homepage_html="",
-            base_url=url,
-            sitemap_urls=[*homepage_links, *sitemap_urls],
-            max_pages=max_candidates,
-        )
-        key_pages = discovery_stats["selected_urls"]
-        base_url_normalized = normalize_discovered_url(url)
-        key_pages = [page for page in key_pages if normalize_discovered_url(page) != base_url_normalized]
-        key_pages = key_pages[:MAX_PAGES_TO_SCRAPE - 1]
-        print(f"  🧹 Filtered candidates: {discovery_stats['filtered_count']}")
-        print(f"  🧹 Filtered utility/meta URLs: {discovery_stats['utility_filtered_count']}")
-        
-        # Filter out disallowed pages (robots.txt)
-        if disallowed_paths:
-            original_count = len(key_pages)
-            key_pages = [p for p in key_pages if is_path_allowed(p, disallowed_paths)]
-            if len(key_pages) < original_count:
-                print(f"  🚫 Skipped {original_count - len(key_pages)} pages (robots.txt)")
-        
-        print(f"  📋 Selected {len(key_pages)} important pages to scrape")
-        for selected_url in key_pages[:5]:
-            print(f"    🔎 Selected: {selected_url}")
-        
-        # Step 4: Scrape key pages with rate limiting
-        if key_pages:
-            print("  ⚡ Scraping pages (with polite delays)...")
-            
-            # Process in small batches to be polite
-            batch_size = 1 if render_mode == "browser" else 3
-            for i in range(0, len(key_pages), batch_size):
-                batch = key_pages[i:i + batch_size]
-                tasks = [
-                    extract_page_with_render_mode(
-                        session,
-                        page_url,
-                        page_type=classify_page_type(page_url),
-                    )
-                    for page_url in batch
-                ]
-                page_results = await asyncio.gather(*tasks)
-                
-                for page_data, _, effective_page_url, error in page_results:
-                    if page_data:
-                        results["pages"].append(page_data)
-                        print(f"    ✅ {effective_page_url.split('/')[-1] or 'page'}: {page_data['title'][:30] if page_data['title'] else 'No title'}")
-                    elif error:
-                        results["errors"].append(f"{effective_page_url}: {error}")
-                
-                # Polite delay between batches
-                if i + batch_size < len(key_pages):
-                    await asyncio.sleep(POLITE_DELAY)
-    
-    results["total_pages"] = len(results["pages"])
-    results["success"] = results["total_pages"] > 0
-    
-    # Summary
-    if results["errors"]:
-        print(f"  ⚠️ Completed with {len(results['errors'])} errors")
-    print(f"  🎉 Scraping complete: {results['total_pages']} pages extracted")
-    
-    return results
+
+async def scrape_website(url: str, max_pages: int | None = None, max_depth: int | None = None) -> Dict:
+    """
+    Crawl a website and extract every page within the crawl budget.
+
+    Follows links from every fetched page and from sitemaps, respects
+    robots.txt, renders JavaScript pages with one shared browser when needed,
+    skips duplicates, and removes cross-page boilerplate.
+    Returns {source_url, scraped_at, pages, total_pages, success, errors, crawl_report}.
+    """
+    config = CrawlConfig.from_settings(max_pages=max_pages, max_depth=max_depth)
+    return await crawl_website(url, extract_fn=_crawler_extract, config=config)
 
 
 def format_scraped_content_for_context(scraped_data: Dict) -> str:
@@ -904,7 +542,11 @@ def ensure_knowledge_metadata(knowledge: Dict, fallback_url: str = "") -> Dict:
 def create_knowledge_json(url: str, scraped_data: Dict, web_search_results: List = None, name: str = "") -> Dict:
     """Create a structured JSON knowledge base from all sources."""
     normalized_url = normalize_url_for_cache(url)
-    v2_pages = scraped_data.get("pages", [])
+    v2_pages = [
+        {key: value for key, value in page.items() if not str(key).startswith("_")}
+        for page in scraped_data.get("pages", [])
+        if isinstance(page, dict)
+    ]
     legacy_pages = [convert_v2_page_to_legacy_page(page) for page in v2_pages]
     knowledge = {
         "metadata": {
@@ -930,6 +572,11 @@ def create_knowledge_json(url: str, scraped_data: Dict, web_search_results: List
         }
     }
     
+    crawl_report = scraped_data.get("crawl_report")
+    if isinstance(crawl_report, dict):
+        knowledge["metadata"]["crawler_version"] = CRAWLER_VERSION
+        knowledge["metadata"]["crawl"] = summarize_crawl_report(crawl_report)
+
     # Add web search results if available
     if web_search_results:
         for i, result in enumerate(web_search_results):
@@ -939,6 +586,102 @@ def create_knowledge_json(url: str, scraped_data: Dict, web_search_results: List
             })
     
     return ensure_v2_knowledge_shape(knowledge, fallback_url=url)
+
+
+CRAWLER_VERSION = "frontier-1"
+_TITLE_SEPARATORS = re.compile(r"\s+[|\-–—:·»]\s+")
+_SITE_NAME_TYPES = {"organization", "website", "educationalorganization", "collegeoruniversity", "localbusiness",
+                    "store", "onlinestore", "corporation", "governmentorganization", "ngo", "school"}
+
+
+def _setting(name: str, default):
+    try:
+        return getattr(get_settings(), name, default)
+    except Exception:
+        return default
+
+
+def web_search_supplement_enabled() -> bool:
+    """Web-search gap filling adds non-website content; the project scope
+    lists it as out of scope, so it is opt-in (ENABLE_WEB_SEARCH_SUPPLEMENT)."""
+    return bool(_setting("enable_web_search_supplement", False))
+
+
+def summarize_crawl_report(report: Dict) -> Dict:
+    """Small crawl summary stored in knowledge metadata (full report goes to exports)."""
+    skipped = report.get("skipped") or {}
+    return {
+        "scope": report.get("scope"),
+        "pages_stored": report.get("pages_stored", 0),
+        "documents_stored": report.get("documents_stored", 0),
+        "pages_attempted": report.get("pages_attempted", 0),
+        "duplicates": report.get("duplicate_count", 0),
+        "failed": len(report.get("failed") or []),
+        "skipped": dict(skipped),
+        "sitemap_urls": report.get("sitemap_urls", 0),
+        "duration_seconds": report.get("duration_seconds"),
+        "pages_rendered": (report.get("render") or {}).get("pages_rendered", 0),
+        "boilerplate_blocks_removed": (report.get("boilerplate") or {}).get("blocks_removed", 0),
+    }
+
+
+def derive_site_name(scraped_data: Dict) -> str:
+    """Site name from page metadata (no LLM call): og:site_name, JSON-LD, titles."""
+    pages = [page for page in scraped_data.get("pages", []) if isinstance(page, dict) and page.get("page_type") != "site_wide"]
+    if not pages:
+        return ""
+    homepage = next((page for page in pages if page.get("page_type") == "homepage"), pages[0])
+    open_graph = (homepage.get("metadata") or {}).get("open_graph") or {}
+    if open_graph.get("site_name"):
+        return str(open_graph["site_name"]).strip()
+
+    stack = list(homepage.get("structured_data") or [])
+    while stack:
+        node = stack.pop(0)
+        if isinstance(node, list):
+            stack.extend(node)
+        elif isinstance(node, dict):
+            types = node.get("@type")
+            types = types if isinstance(types, list) else [types]
+            if any(str(t).lower() in _SITE_NAME_TYPES for t in types if t) and isinstance(node.get("name"), str) and node["name"].strip():
+                return node["name"].strip()
+            stack.extend(value for value in node.values() if isinstance(value, (dict, list)))
+
+    segment_counts: Dict[str, int] = {}
+    for page in pages:
+        for segment in {seg.strip() for seg in _TITLE_SEPARATORS.split(page.get("title") or "") if seg.strip()}:
+            segment_counts[segment] = segment_counts.get(segment, 0) + 1
+    repeated = [segment for segment, count in segment_counts.items() if count >= 2 and len(segment) <= 80]
+    if len(pages) >= 2 and repeated:
+        return max(repeated, key=lambda segment: (segment_counts[segment], -len(segment)))
+    title_parts = [seg.strip() for seg in _TITLE_SEPARATORS.split(homepage.get("title") or "") if seg.strip()]
+    if title_parts and title_parts[0].lower() not in {"home", "homepage", "welcome", "index"}:
+        return title_parts[0][:80]
+    return ""
+
+
+def _export_knowledge_best_effort(scraped_data: Dict, knowledge: Dict, knowledge_filepath, stats: Dict) -> None:
+    if not _setting("knowledge_export_enabled", True) or not knowledge_filepath:
+        return
+    try:
+        stats["knowledge_exports"] = export_crawl_outputs(
+            scraped_data.get("pages", []),
+            knowledge,
+            knowledge_filepath,
+            crawl_report=scraped_data.get("crawl_report"),
+        )
+    except Exception as exc:
+        print(f"⚠️ Knowledge export skipped: {exc}")
+
+
+def _knowledge_has_pages(knowledge: Dict | None) -> bool:
+    if not isinstance(knowledge, dict):
+        return False
+    metadata = knowledge.get("metadata") or {}
+    if int(metadata.get("pages_scraped") or 0) > 0:
+        return True
+    primary = knowledge.get("primary_content") or {}
+    return bool(knowledge.get("pages") or primary.get("pages"))
 
 
 def save_knowledge_json(knowledge: Dict, url: str) -> str:
@@ -1216,7 +959,12 @@ def build_error_status(error_type: str, details: str = "") -> str:
 # NEW MAIN RESEARCH PIPELINE (Scraper-First Approach with Caching + Error Handling)
 # ============================================================
 
-async def run_full_research_new(url: str, force_refresh: bool = False, progress=gr.Progress()):
+async def run_full_research_new(
+    url: str,
+    force_refresh: bool = False,
+    progress=gr.Progress(),
+    max_pages: int | None = None,
+):
     """
     NEW workflow: Scrape first, then fill gaps with targeted searches.
     With caching support and improved error handling (Phase 3).
@@ -1230,6 +978,9 @@ async def run_full_research_new(url: str, force_refresh: bool = False, progress=
         progress(0.5, desc="Loading from cache...")
         
         cached_knowledge = get_cached_knowledge(url)
+        if cached_knowledge and not _knowledge_has_pages(cached_knowledge):
+            print("⚠️ Cached knowledge has no pages; crawling again.")
+            cached_knowledge = None
         if cached_knowledge:
             stats["cache_hit"] = True
             progress(0.9, desc="Preparing chatbot from cache...")
@@ -1273,7 +1024,12 @@ RULES:
     status_text = build_status_new(5, current_step=0, stats=stats)
     
     try:
-        scraped_data = await _maybe_await(scrape_website(url))
+        if max_pages:
+            scraped_data = await _maybe_await(scrape_website(url, max_pages=max_pages))
+        else:
+            scraped_data = await _maybe_await(scrape_website(url))
+        if isinstance(scraped_data.get("crawl_report"), dict):
+            stats["crawl_report"] = summarize_crawl_report(scraped_data["crawl_report"])
         stats["pages_scraped"] = scraped_data.get("total_pages", 0)
         errors.extend(scraped_data.get("errors", []))  # Collect scraping errors
         
@@ -1293,8 +1049,14 @@ RULES:
     status_text = build_status_new(25, current_step=1, stats=stats, errors=errors)
     
     search_results = []
-    
-    if scraped_content:
+    web_search_enabled = web_search_supplement_enabled()
+    stats["web_search_enabled"] = web_search_enabled
+
+    if not web_search_enabled:
+        # Default: the knowledge base holds only content from the website itself.
+        progress(0.45, desc="Using website content only")
+        status_text = build_status_new(45, current_step=2, stats=stats, errors=errors)
+    elif scraped_content:
         try:
             gap_analysis = await _maybe_await(analyze_content_gaps(scraped_content, url))
             stats["gaps_found"] = len(gap_analysis.gaps_found)
@@ -1344,8 +1106,10 @@ RULES:
     
     # Check if we have any content at all
     if not scraped_content and not search_results:
-        error_status = build_error_status("scrape_failed", 
-            f"Could not extract content from {url}. Try a different URL or check if the site is accessible.")
+        crawl_errors = "; ".join(str(error)[:120] for error in (scraped_data.get("errors") or [])[:3])
+        error_status = build_error_status("scrape_failed",
+            f"Could not extract content from {url}. Try a different URL or check if the site is accessible."
+            + (f"\n\nDetails: {crawl_errors}" if crawl_errors else ""))
         return (
             error_status,
             "",
@@ -1360,12 +1124,14 @@ RULES:
     progress(0.70, desc="Building knowledge base...")
     status_text = build_status_new(70, current_step=3, stats=stats, errors=errors)
     
-    try:
-        name_source = scraped_content[:2000] if scraped_content else str(search_results)[:2000]
-        raw_name = await _maybe_await(extract_name_from_text(name_source, url))
-    except Exception as e:
-        print(f"⚠️ Name extraction error: {e}")
-        raw_name = ""
+    raw_name = derive_site_name(scraped_data)
+    if not raw_name:
+        try:
+            name_source = scraped_content[:2000] if scraped_content else str(search_results)[:2000]
+            raw_name = await _maybe_await(extract_name_from_text(name_source, url))
+        except Exception as e:
+            print(f"⚠️ Name extraction error: {e}")
+            raw_name = ""
     
     if not raw_name:
         try:
@@ -1376,11 +1142,13 @@ RULES:
     
     knowledge = create_knowledge_json(url, scraped_data, search_results, raw_name)
     
+    knowledge_filepath = None
     try:
         knowledge_filepath = save_knowledge_json(knowledge, url)
     except Exception as e:
         print(f"⚠️ Could not save cache: {e}")
         errors.append(f"Cache save failed: {str(e)[:30]}")
+    _export_knowledge_best_effort(scraped_data, knowledge, knowledge_filepath, stats)
 
     _index_knowledge_best_effort(knowledge, stats, force_reindex=True)
     

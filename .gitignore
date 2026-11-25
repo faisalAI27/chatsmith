@@ -28,3 +28,6 @@ evaluation/results/*.md
 
 .vscode/
 .DS_Store
+
+# Crawl exports (JSONL / Markdown / crawl reports) are generated runtime data
+backend/knowledge_files/exports/
